@@ -76,7 +76,6 @@
       color: #fff; border: none; border-radius: 8px;
       font-size: 14px; cursor: pointer; z-index: 5;
     }
-    /* Joystick */
     #joystick-zone {
       position: absolute;
       left: 20px; bottom: 20px;
@@ -151,16 +150,25 @@
     const CONFIG = {
       winMass: 80,
       foodCount: 80,
-      botCount: 8,
+      botCount: 12,
       worldSize: 3000,
       playerStartMass: 10,
       foodMass: 1.5,
-      maxSpeed: 4.5,
+      maxSpeed: 4.5,          // 基础速度
+      playerSpeedMul: 0.5,   // 玩家速度变为原来的 1/2
+      botSpeedMul: 0.25,     // 小怪速度变为原来的 1/4
       accel: 0.35,
-      frictionTime: 0.3, // 秒内减速停止
-      eatAnimDuration: 100, // ms
+      frictionTime: 0.3,
+      eatAnimDuration: 100,
       imgPuyi: 'photo/puyi.png',
-      imgEating: 'photo/puyi-eating.png'
+      imgEating: 'photo/puyi-eating.png',
+      bgm: 'BGM/Passion_Red.ogg',
+      // 三种小怪：大中小
+      monsterTypes: [
+        { name: 'small',  mass: 6,  img: 'photo/xiaoguai2.png' },
+        { name: 'medium', mass: 16, img: 'photo/xiaoguai3.png' },
+        { name: 'large',  mass: 32, img: 'photo/xiaoguai4.png' }
+      ]
     };
 
     // ============== DOM ==============
@@ -181,7 +189,8 @@
     let camera = { x: 0, y: 0 };
     let mouse = { x: 0, y: 0, down: false };
     let joy = { active: false, dx: 0, dy: 0 };
-    let images = { puyi: null, eating: null };
+    let images = { puyi: null, eating: null, monsters: {} };
+    let bgmAudio = null;
     let lastTime = 0;
     let isMobile = false;
 
@@ -199,9 +208,9 @@
       return Math.max(min, Math.min(max, v));
     }
 
-    // ============== 加载图片 ==============
+    // ============== 加载资源 ==============
     function loadImages() {
-      return Promise.all([
+      const promises = [
         new Promise(res => {
           const img = new Image();
           img.onload = () => { images.puyi = img; res(); };
@@ -214,41 +223,73 @@
           img.onerror = () => { images.eating = null; res(); };
           img.src = CONFIG.imgEating;
         })
-      ]);
+      ];
+      CONFIG.monsterTypes.forEach(t => {
+        promises.push(new Promise(res => {
+          const img = new Image();
+          img.onload = () => { images.monsters[t.name] = img; res(); };
+          img.onerror = () => { images.monsters[t.name] = null; res(); };
+          img.src = t.img;
+        }));
+      });
+      return Promise.all(promises);
+    }
+
+    function initBgm() {
+      bgmAudio = new Audio(CONFIG.bgm);
+      bgmAudio.loop = true;
+      bgmAudio.volume = 0.45;
+    }
+
+    function playBgm() {
+      if (!bgmAudio) initBgm();
+      bgmAudio.currentTime = 0;
+      bgmAudio.play().catch(() => {
+        // 浏览器可能阻止自动播放，用户交互后会再试
+      });
+    }
+
+    function stopBgm() {
+      if (bgmAudio) {
+        bgmAudio.pause();
+        bgmAudio.currentTime = 0;
+      }
     }
 
     // ============== 球类 ==============
     class Ball {
-      constructor(x, y, mass, isPlayer = false, color = null) {
+      constructor(x, y, mass, isPlayer = false, monsterType = null) {
         this.x = x;
         this.y = y;
         this.mass = mass;
         this.vx = 0;
         this.vy = 0;
         this.isPlayer = isPlayer;
-        this.color = color || `hsl(${Math.random()*360}, 70%, 55%)`;
-        this.eatTimer = 0; // 进食动画剩余时间
+        this.monsterType = monsterType; // 'small' | 'medium' | 'large' | null
+        this.eatTimer = 0;
         this.alive = true;
+        this.speedMul = isPlayer ? CONFIG.playerSpeedMul : CONFIG.botSpeedMul;
       }
       get r() { return massToRadius(this.mass); }
 
       update(dt, targetDx, targetDy, isMoving) {
         if (!this.alive) return;
 
-        const maxSpd = CONFIG.maxSpeed * (1 + Math.log10(this.mass + 1) * 0.15);
+        const baseMax = CONFIG.maxSpeed * this.speedMul;
+        const maxSpd = baseMax * (1 + Math.log10(this.mass + 1) * 0.15);
+
         if (isMoving) {
           const len = Math.sqrt(targetDx * targetDx + targetDy * targetDy) || 1;
           const dirX = targetDx / len;
           const dirY = targetDy / len;
-          this.vx += dirX * CONFIG.accel * 60 * dt;
-          this.vy += dirY * CONFIG.accel * 60 * dt;
+          this.vx += dirX * CONFIG.accel * this.speedMul * 60 * dt;
+          this.vy += dirY * CONFIG.accel * this.speedMul * 60 * dt;
           const spd = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
           if (spd > maxSpd) {
             this.vx = (this.vx / spd) * maxSpd;
             this.vy = (this.vy / spd) * maxSpd;
           }
         } else {
-          // 0.3 秒内减速停止
           const friction = Math.pow(0.01, dt / CONFIG.frictionTime);
           this.vx *= friction;
           this.vy *= friction;
@@ -259,7 +300,6 @@
         this.x += this.vx;
         this.y += this.vy;
 
-        // 边界
         const r = this.r;
         this.x = clamp(this.x, r, CONFIG.worldSize - r);
         this.y = clamp(this.y, r, CONFIG.worldSize - r);
@@ -282,24 +322,17 @@
         if (this.isPlayer && images.puyi) {
           const img = (this.eatTimer > 0 && images.eating) ? images.eating : images.puyi;
           ctx.drawImage(img, sx - r, sy - r, r * 2, r * 2);
+        } else if (this.monsterType && images.monsters[this.monsterType]) {
+          const img = images.monsters[this.monsterType];
+          ctx.drawImage(img, sx - r, sy - r, r * 2, r * 2);
         } else {
-          ctx.fillStyle = this.color;
-          ctx.fill();
-          // 简单眼睛
-          ctx.fillStyle = '#fff';
-          ctx.beginPath();
-          ctx.arc(sx - r * 0.3, sy - r * 0.25, r * 0.22, 0, Math.PI * 2);
-          ctx.arc(sx + r * 0.3, sy - r * 0.25, r * 0.22, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = '#222';
-          ctx.beginPath();
-          ctx.arc(sx - r * 0.3, sy - r * 0.25, r * 0.1, 0, Math.PI * 2);
-          ctx.arc(sx + r * 0.3, sy - r * 0.25, r * 0.1, 0, Math.PI * 2);
+          // 兜底颜色
+          ctx.fillStyle = this.monsterType === 'large' ? '#e74c3c' :
+                          this.monsterType === 'medium' ? '#f39c12' : '#2ecc71';
           ctx.fill();
         }
         ctx.restore();
 
-        // 描边
         ctx.beginPath();
         ctx.arc(sx, sy, r, 0, Math.PI * 2);
         ctx.strokeStyle = 'rgba(0,0,0,0.35)';
@@ -325,15 +358,17 @@
         });
       }
 
+      // 只生成大中小三种固定大小的小怪
       for (let i = 0; i < CONFIG.botCount; i++) {
         let bx, by, tries = 0;
         do {
           bx = Math.random() * CONFIG.worldSize;
           by = Math.random() * CONFIG.worldSize;
           tries++;
-        } while (dist({x:bx,y:by}, player) < 200 && tries < 50);
-        const m = 5 + Math.random() * 25;
-        bots.push(new Ball(bx, by, m, false));
+        } while (dist({x:bx,y:by}, player) < 250 && tries < 50);
+
+        const type = CONFIG.monsterTypes[i % 3]; // 均匀分布三种
+        bots.push(new Ball(bx, by, type.mass, false, type.name));
       }
 
       camera.x = player.x - canvas.width / 2;
@@ -395,7 +430,6 @@
         joystickZone.addEventListener('touchend', handleEnd);
         joystickZone.addEventListener('touchcancel', handleEnd);
       } else {
-        // 电脑：鼠标位置决定方向，左键按住前进
         canvas.addEventListener('mousemove', e => {
           const rect = canvas.getBoundingClientRect();
           mouse.x = e.clientX - rect.left;
@@ -407,7 +441,6 @@
         window.addEventListener('mouseup', e => {
           if (e.button === 0) mouse.down = false;
         });
-        // 防止右键菜单
         canvas.addEventListener('contextmenu', e => e.preventDefault());
       }
     }
@@ -425,7 +458,6 @@
           moving = true;
         }
       } else {
-        // 鼠标方向（相对于屏幕中心，即玩家）
         const cx = canvas.width / 2;
         const cy = canvas.height / 2;
         tDx = mouse.x - cx;
@@ -435,21 +467,18 @@
 
       player.update(dt, tDx, tDy, moving);
 
-      // AI bots
+      // AI bots（速度已在 Ball 里乘了 0.25）
       bots.forEach(bot => {
         if (!bot.alive) return;
-        // 简单 AI：朝最近食物或随机游走
         let target = null;
         let minD = Infinity;
         foods.forEach(f => {
           const d = dist(bot, f);
           if (d < minD) { minD = d; target = f; }
         });
-        // 偶尔追玩家（如果自己更大）
         if (bot.mass > player.mass * 1.15 && dist(bot, player) < 400) {
           target = player;
         }
-        // 逃离更大的球
         bots.forEach(other => {
           if (other !== bot && other.alive && other.mass > bot.mass * 1.2 && dist(bot, other) < 250) {
             target = { x: bot.x - (other.x - bot.x), y: bot.y - (other.y - bot.y) };
@@ -477,7 +506,6 @@
           player.mass += f.mass;
           player.eatTimer = CONFIG.eatAnimDuration;
           foods.splice(i, 1);
-          // 补一个
           foods.push({
             x: Math.random() * CONFIG.worldSize,
             y: Math.random() * CONFIG.worldSize,
@@ -486,7 +514,6 @@
           });
         }
       }
-      // bots 吃食物
       bots.forEach(bot => {
         if (!bot.alive) return;
         for (let i = foods.length - 1; i >= 0; i--) {
@@ -525,19 +552,18 @@
         }
       }
 
-      // 相机跟随
       camera.x = player.x - canvas.width / 2;
       camera.y = player.y - canvas.height / 2;
-
       massDisplay.textContent = Math.floor(player.mass);
 
-      // 胜负
       if (player.mass >= CONFIG.winMass) {
         running = false;
+        stopBgm();
         winOverlay.style.display = 'flex';
       }
       if (!player.alive) {
         running = false;
+        stopBgm();
         loseOverlay.style.display = 'flex';
       }
     }
@@ -546,7 +572,6 @@
       ctx.fillStyle = '#0d1b2a';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // 网格
       ctx.strokeStyle = 'rgba(255,255,255,0.04)';
       ctx.lineWidth = 1;
       const grid = 80;
@@ -559,7 +584,6 @@
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
       }
 
-      // 食物
       foods.forEach(f => {
         const sx = f.x - camera.x;
         const sy = f.y - camera.y;
@@ -570,7 +594,6 @@
         ctx.fill();
       });
 
-      // bots + player
       bots.forEach(b => b.draw(ctx, camera.x, camera.y));
       if (player) player.draw(ctx, camera.x, camera.y);
     }
@@ -590,6 +613,7 @@
       gameContainer.style.display = 'block';
       resize();
       initLevel(level);
+      playBgm();
       running = true;
       lastTime = performance.now();
       requestAnimationFrame(loop);
@@ -597,6 +621,7 @@
 
     function backToMenu() {
       running = false;
+      stopBgm();
       gameContainer.style.display = 'none';
       menu.style.display = 'flex';
       winOverlay.style.display = 'none';
@@ -614,7 +639,6 @@
         if (btn.classList.contains('disabled')) return;
         const lv = btn.dataset.level;
         if (lv === '1') startGame(1);
-        // 其他关卡后续可扩展
       });
     });
 
@@ -624,6 +648,7 @@
       winOverlay.style.display = 'none';
       loseOverlay.style.display = 'none';
       initLevel(1);
+      playBgm();
       running = true;
       lastTime = performance.now();
       requestAnimationFrame(loop);
@@ -636,6 +661,7 @@
 
     // 初始化
     setupInput();
+    initBgm();
     loadImages().then(() => {
       console.log('噗伊大作战 资源加载完成');
     });
