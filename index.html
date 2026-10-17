@@ -126,7 +126,7 @@
 
   <div id="game-container">
     <canvas id="gameCanvas"></canvas>
-    <div id="hud">质量: <span id="mass-display">10</span> | 目标: 300</div>
+    <div id="hud">质量: <span id="mass-display">10</span> | 目标: 500</div>
     <button id="back-btn">返回主页</button>
     <div id="joystick-zone">
       <div id="joystick-base">
@@ -148,10 +148,10 @@
   <script>
     // ============== 配置 ==============
     const CONFIG = {
-      winMass: 300,
-      foodCount: 160,        // 地图变大，食物也增加
-      botCount: 28,          // 敌人相应变多
-      worldSize: 6000,       // 地图变大一倍
+      winMass: 500,
+      foodCount: 160,
+      botCount: 30,
+      worldSize: 6000,
       playerStartMass: 10,
       foodMass: 1.5,
       maxSpeed: 4.5,
@@ -208,9 +208,7 @@
       return Math.max(min, Math.min(max, v));
     }
 
-    // 根据质量计算镜头缩放：每 50 分拉远一点
     function getCameraScale(mass) {
-      // 每 50 质量缩放一级，最低 0.35
       const steps = Math.floor(mass / 50);
       return Math.max(0.35, 1 - steps * 0.09);
     }
@@ -318,7 +316,6 @@
         if (this.eatTimer > 0) this.eatTimer -= dt * 1000;
       }
 
-      // 绘制时传入 scale，坐标已是屏幕坐标（经过相机变换）
       draw(ctx, sx, sy, scale) {
         if (!this.alive) return;
         const r = this.r * scale;
@@ -507,7 +504,6 @@
         bot.update(dt, dx, dy, true);
       });
 
-      // 吃食物
       for (let i = foods.length - 1; i >= 0; i--) {
         const f = foods[i];
         if (dist(player, f) < player.r - 2) {
@@ -539,7 +535,6 @@
         }
       });
 
-      // 球吃球
       const all = [player, ...bots];
       for (let i = 0; i < all.length; i++) {
         for (let j = i + 1; j < all.length; j++) {
@@ -560,7 +555,6 @@
         }
       }
 
-      // 相机：跟随玩家 + 根据质量缩放
       camera.scale = getCameraScale(player.mass);
       camera.x = player.x;
       camera.y = player.y;
@@ -588,15 +582,8 @@
     }
 
     function draw() {
-      // 背景图（平铺或拉伸）
       if (images.bg) {
-        // 以相机中心为基准平铺背景
-        const s = camera.scale;
-        const bgW = images.bg.width;
-        const bgH = images.bg.height;
-        // 简单拉伸覆盖整个画布（也可用平铺）
         ctx.drawImage(images.bg, 0, 0, canvas.width, canvas.height);
-        // 半透明遮罩让游戏元素更清晰
         ctx.fillStyle = 'rgba(10, 20, 35, 0.45)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       } else {
@@ -606,7 +593,6 @@
 
       const s = camera.scale;
 
-      // 网格（随缩放）
       ctx.strokeStyle = 'rgba(255,255,255,0.06)';
       ctx.lineWidth = 1;
       const grid = 100;
@@ -625,7 +611,6 @@
         ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
       }
 
-      // 食物
       foods.forEach(f => {
         const p = worldToScreen(f.x, f.y);
         if (p.x < -20 || p.x > canvas.width + 20 || p.y < -20 || p.y > canvas.height + 20) return;
@@ -635,7 +620,6 @@
         ctx.fill();
       });
 
-      // bots + player
       bots.forEach(b => {
         const p = worldToScreen(b.x, b.y);
         b.draw(ctx, p.x, p.y, s);
@@ -655,7 +639,6 @@
       requestAnimationFrame(loop);
     }
 
-    // ============== 启动 / 返回 ==============
     function startGame(level) {
       menu.style.display = 'none';
       gameContainer.style.display = 'block';
@@ -681,7 +664,6 @@
       canvas.height = window.innerHeight;
     }
 
-    // ============== 事件绑定 ==============
     document.querySelectorAll('.level-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         if (btn.classList.contains('disabled')) return;
