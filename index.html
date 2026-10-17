@@ -1,860 +1,107 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>噗伊大作战</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body {
-      width: 100%; height: 100%;
-      overflow: hidden;
-      background: #1a1a2e;
-      font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
-      touch-action: none;
-      user-select: none;
-      -webkit-user-select: none;
-    }
-    #menu {
-      position: absolute; inset: 0;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      background-color: #1a1a2e;
-      background-image: url('photo/Story_InVendingMachine.webp');
-      background-size: cover;
-      background-position: center center;
-      background-repeat: no-repeat;
-      z-index: 10;
-      color: #fff;
-    }
-    #menu::before {
-      content: '';
-      position: absolute; inset: 0;
-      background: rgba(10, 15, 30, 0.45);
-      z-index: 0;
-      pointer-events: none;
-    }
-    #menu > * { position: relative; z-index: 1; }
-    #menu h1 {
-      font-size: clamp(2.2rem, 8vw, 3.5rem);
-      margin-bottom: 1.5rem;
-      text-shadow: 0 0 20px #e94560, 0 0 40px #e94560;
-      letter-spacing: 0.15em;
-    }
-    .level-btn {
-      display: block;
-      width: min(280px, 80vw);
-      padding: 14px 20px;
-      margin: 8px 0;
-      font-size: 1.15rem;
-      border: none;
-      border-radius: 12px;
-      background: linear-gradient(90deg, #e94560, #ff6b6b);
-      color: #fff;
-      cursor: pointer;
-      transition: transform 0.15s, box-shadow 0.15s;
-      box-shadow: 0 4px 15px rgba(233, 69, 96, 0.4);
-    }
-    .level-btn:hover, .level-btn:active {
-      transform: scale(1.05);
-      box-shadow: 0 6px 20px rgba(233, 69, 96, 0.6);
-    }
-    .level-btn.disabled {
-      background: #555;
-      box-shadow: none;
-      cursor: not-allowed;
-      opacity: 0.6;
-    }
-    #game-container { position: absolute; inset: 0; display: none; }
-    #gameCanvas { display: block; width: 100%; height: 100%; background: #0d1b2a; }
-    #hud {
-      position: absolute; top: 12px; left: 12px;
-      color: #fff; font-size: 14px;
-      text-shadow: 0 1px 3px #000;
-      pointer-events: none; z-index: 5;
-    }
-    #back-btn {
-      position: absolute; top: 12px; right: 12px;
-      padding: 8px 16px;
-      background: rgba(233, 69, 96, 0.85);
-      color: #fff; border: none; border-radius: 8px;
-      font-size: 14px; cursor: pointer; z-index: 5;
-    }
-    #joystick-zone {
-      position: absolute;
-      width: 140px; height: 140px;
-      z-index: 5; display: none;
-      pointer-events: none;
-      transform: translate(-50%, -50%);
-    }
-    #joystick-base {
-      width: 140px; height: 140px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.18);
-      border: 2px solid rgba(255,255,255,0.35);
-      position: relative;
-    }
-    #joystick-knob {
-      width: 56px; height: 56px;
-      border-radius: 50%;
-      background: rgba(233, 69, 96, 0.9);
-      position: absolute; left: 42px; top: 42px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-    }
-    #win-overlay, #lose-overlay {
-      position: absolute; inset: 0;
-      background: rgba(0,0,0,0.7);
-      display: none; flex-direction: column;
-      align-items: center; justify-content: center;
-      z-index: 20; color: #fff;
-    }
-    #win-overlay h2, #lose-overlay h2 { font-size: 2rem; margin-bottom: 1rem; }
-    .overlay-btn {
-      padding: 12px 28px; margin: 8px;
-      font-size: 1.1rem; border: none; border-radius: 10px;
-      background: #e94560; color: #fff; cursor: pointer;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>噗伊大作战</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#1a1a2e;font-family:"Microsoft YaHei","PingFang SC",sans-serif;touch-action:none;user-select:none;-webkit-user-select:none}
+#menu{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background-color:#1a1a2e;background-image:url('photo/Story_InVendingMachine.webp');background-size:cover;background-position:center center;background-repeat:no-repeat;z-index:10;color:#fff}
+#menu::before{content:'';position:absolute;inset:0;background:rgba(10,15,30,0.45);z-index:0;pointer-events:none}
+#menu>*{position:relative;z-index:1}
+#menu h1{font-size:clamp(2.2rem,8vw,3.5rem);margin-bottom:1.5rem;text-shadow:0 0 20px #e94560,0 0 40px #e94560;letter-spacing:0.15em}
+.level-btn{display:block;width:min(280px,80vw);padding:14px 20px;margin:8px 0;font-size:1.15rem;border:none;border-radius:12px;background:linear-gradient(90deg,#e94560,#ff6b6b);color:#fff;cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;box-shadow:0 4px 15px rgba(233,69,96,0.4)}
+.level-btn:hover,.level-btn:active{transform:scale(1.05);box-shadow:0 6px 20px rgba(233,69,96,0.6)}
+.level-btn.disabled{background:#555;box-shadow:none;cursor:not-allowed;opacity:0.6}
+#game-container{position:absolute;inset:0;display:none}
+#gameCanvas{display:block;width:100%;height:100%;background:#0d1b2a}
+#hud{position:absolute;top:12px;left:12px;color:#fff;font-size:14px;text-shadow:0 1px 3px #000;pointer-events:none;z-index:5}
+#back-btn{position:absolute;top:12px;right:12px;padding:8px 16px;background:rgba(233,69,96,0.85);color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;z-index:5}
+#joystick-zone{position:absolute;width:140px;height:140px;z-index:5;display:none;pointer-events:none;transform:translate(-50%,-50%)}
+#joystick-base{width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,0.18);border:2px solid rgba(255,255,255,0.35);position:relative}
+#joystick-knob{width:56px;height:56px;border-radius:50%;background:rgba(233,69,96,0.9);position:absolute;left:42px;top:42px;box-shadow:0 2px 8px rgba(0,0,0,0.4)}
+#win-overlay,#lose-overlay{position:absolute;inset:0;background:rgba(0,0,0,0.7);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:20;color:#fff}
+#win-overlay h2,#lose-overlay h2{font-size:2rem;margin-bottom:1rem}
+.overlay-btn{padding:12px 28px;margin:8px;font-size:1.1rem;border:none;border-radius:10px;background:#e94560;color:#fff;cursor:pointer}
+#suck-btn{position:absolute;left:20px;bottom:180px;width:72px;height:72px;border-radius:50%;border:3px solid rgba(255,200,80,0.9);background:rgba(180,100,20,0.75);color:#fff;font-size:13px;font-weight:bold;z-index:6;display:none;align-items:center;justify-content:center;text-align:center;line-height:1.2;touch-action:none;user-select:none;box-shadow:0 0 12px rgba(255,180,50,0.5)}
+#suck-btn.active{background:rgba(255,160,40,0.95);box-shadow:0 0 20px rgba(255,200,80,0.9);transform:scale(1.08)}
+</style>
 </head>
 <body>
-  <div id="menu">
-    <h1>噗伊大作战</h1>
-    <button class="level-btn" data-level="1">第一关</button>
-    <button class="level-btn disabled" data-level="2" id="btn-level2">第二关</button>
-    <button class="level-btn disabled" data-level="3">第三关</button>
-    <button class="level-btn disabled" data-level="4">第四关</button>
-    <button class="level-btn disabled" data-level="5">第五关</button>
-    <button class="level-btn disabled" data-level="endless">无尽模式</button>
-  </div>
-
-  <div id="game-container">
-    <canvas id="gameCanvas"></canvas>
-    <div id="hud">质量: <span id="mass-display">10</span> | <span id="goal-display">目标: 500</span></div>
-    <button id="back-btn">返回主页</button>
-    <div id="joystick-zone">
-      <div id="joystick-base"><div id="joystick-knob"></div></div>
-    </div>
-    <div id="win-overlay">
-      <h2>通关成功！</h2>
-      <p id="win-msg">噗伊已经足够大啦～</p>
-      <button class="overlay-btn" id="next-level-btn">返回主页</button>
-    </div>
-    <div id="lose-overlay">
-      <h2>被抓到了</h2>
-      <button class="overlay-btn" id="retry-btn">再试一次</button>
-      <button class="overlay-btn" id="menu-btn">返回主页</button>
-    </div>
-  </div>
-
-  <script>
-    const LEVELS = {
-      1: {
-        winMass: 500,
-        foodCount: 560,
-        botCount: 60,
-        worldSize: 6000,
-        bgImage: 'photo/Story_2f_cocoon_B.webp',
-        bgm: 'BGM/Passion_Red.ogg',
-        mode: 'normal',
-        goalText: '目标: 500'
-      },
-      2: {
-        worldSize: 5000,
-        bgImage: 'photo/Story_4f_lostshelter.webp',
-        bgm: 'BGM/Passion_Red.ogg',
-        mode: 'level2',
-        dustCount: 28,
-        dustMaxMass: 30,
-        ainawenMass: 300,
-        laurelMass: 100,
-        goalText: '目标: 吃掉爱娜温'
-      }
-    };
-
-    const SHARED = {
-      playerStartMass: 10,
-      foodMass: 1.5,
-      maxSpeed: 4.5,
-      playerSpeedMul: 0.5,
-      botSpeedMul: 0.25,
-      accel: 0.35,
-      frictionTime: 0.3,
-      eatAnimDuration: 100,
-      imgPuyi: 'photo/puyi.png',
-      imgEating: 'photo/puyi-eating.png',
-      imgAinawen: 'photo/ainawen.png',
-      imgDust: 'photo/xiaoguai1.png',
-      imgLaurel: 'photo/赎罪的月桂冠.webp',
-      menuBgm: 'BGM/Timewalker.ogg',
-      sfxWin: 'BGM/audio_last_2s.m4a',
-      sfxClick: 'BGM/audio_first_1s.m4a',
-      monsterTypes: [
-        { name: 'small',  mass: 6,  img: 'photo/xiaoguai2.png' },
-        { name: 'medium', mass: 16, img: 'photo/xiaoguai3.png' },
-        { name: 'large',  mass: 32, img: 'photo/xiaoguai4.png' }
-      ]
-    };
-
-    const menu = document.getElementById('menu');
-    const gameContainer = document.getElementById('game-container');
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    const massDisplay = document.getElementById('mass-display');
-    const goalDisplay = document.getElementById('goal-display');
-    const backBtn = document.getElementById('back-btn');
-    const joystickZone = document.getElementById('joystick-zone');
-    const knob = document.getElementById('joystick-knob');
-    const winOverlay = document.getElementById('win-overlay');
-    const loseOverlay = document.getElementById('lose-overlay');
-    const winMsg = document.getElementById('win-msg');
-    const btnLevel2 = document.getElementById('btn-level2');
-
-    let running = false;
-    let currentLevel = 1;
-    let player, foods, bots;
-    let ainawen = null;
-    let laurel = null;
-    let camera = { x: 0, y: 0, scale: 1 };
-    let mouse = { x: 0, y: 0, down: false };
-    let joy = { active: false, dx: 0, dy: 0, originX: 0, originY: 0 };
-    let images = { puyi: null, eating: null, monsters: {}, bg: null, ainawen: null, dust: null, laurel: null };
-    let menuAudio = null, gameBgm = null, sfxWin = null, sfxClick = null;
-    let lastTime = 0;
-    let isMobile = false;
-    let unlocked = { 1: true, 2: false };
-
-    function massToRadius(m) { return Math.sqrt(m) * 6; }
-    function dist(a, b) {
-      const dx = a.x - b.x, dy = a.y - b.y;
-      return Math.sqrt(dx * dx + dy * dy);
-    }
-    function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
-    function getCameraScale(mass) {
-      const steps = Math.floor(mass / 50);
-      let s = Math.max(0.28, 1 - steps * 0.09);
-      if (isMobile) { s *= 0.58; s = Math.max(0.22, s); }
-      return s;
-    }
-    function worldSize() {
-      return (LEVELS[currentLevel] && LEVELS[currentLevel].worldSize) || 6000;
-    }
-
-    function loadUnlock() {
-      try {
-        const s = localStorage.getItem('puyi_unlock');
-        if (s) unlocked = JSON.parse(s);
-      } catch(e) {}
-      if (unlocked[2]) btnLevel2.classList.remove('disabled');
-    }
-    function saveUnlock() {
-      try { localStorage.setItem('puyi_unlock', JSON.stringify(unlocked)); } catch(e) {}
-    }
-
-    function initAudio() {
-      menuAudio = new Audio(SHARED.menuBgm);
-      menuAudio.loop = true;
-      menuAudio.volume = 0.4;
-      sfxWin = new Audio(SHARED.sfxWin);
-      sfxWin.volume = 0.7;
-      sfxClick = new Audio(SHARED.sfxClick);
-      sfxClick.volume = 0.7;
-    }
-    function playMenuBgm() {
-      if (!menuAudio) initAudio();
-      stopGameBgm();
-      menuAudio.currentTime = 0;
-      menuAudio.play().catch(() => {});
-    }
-    function stopMenuBgm() {
-      if (menuAudio) { menuAudio.pause(); menuAudio.currentTime = 0; }
-    }
-    function playGameBgm(src) {
-      stopMenuBgm();
-      if (gameBgm) { gameBgm.pause(); }
-      gameBgm = new Audio(src);
-      gameBgm.loop = true;
-      gameBgm.volume = 0.45;
-      gameBgm.play().catch(() => {});
-    }
-    function stopGameBgm() {
-      if (gameBgm) { gameBgm.pause(); gameBgm.currentTime = 0; }
-    }
-    function playSfxWin() {
-      if (!sfxWin) initAudio();
-      sfxWin.currentTime = 0;
-      sfxWin.play().catch(() => {});
-    }
-    function playSfxClick() {
-      if (!sfxClick) initAudio();
-      sfxClick.currentTime = 0;
-      sfxClick.play().catch(() => {});
-    }
-
-    function loadImages(levelCfg) {
-      const list = [
-        { key: 'puyi', src: SHARED.imgPuyi },
-        { key: 'eating', src: SHARED.imgEating },
-        { key: 'bg', src: levelCfg.bgImage },
-        { key: 'ainawen', src: SHARED.imgAinawen },
-        { key: 'dust', src: SHARED.imgDust },
-        { key: 'laurel', src: SHARED.imgLaurel }
-      ];
-      SHARED.monsterTypes.forEach(t => list.push({ key: 'm_' + t.name, src: t.img }));
-      return Promise.all(list.map(item => new Promise(res => {
-        const img = new Image();
-        img.onload = () => {
-          if (item.key.startsWith('m_')) images.monsters[item.key.slice(2)] = img;
-          else images[item.key] = img;
-          res();
-        };
-        img.onerror = () => res();
-        img.src = item.src;
-      })));
-    }
-
-    class Ball {
-      constructor(x, y, mass, isPlayer, kind) {
-        this.x = x; this.y = y; this.mass = mass;
-        this.vx = 0; this.vy = 0;
-        this.isPlayer = !!isPlayer;
-        this.kind = kind || null;
-        this.eatTimer = 0; this.alive = true;
-        this.speedMul = isPlayer ? SHARED.playerSpeedMul : SHARED.botSpeedMul;
-        this.wanderAngle = Math.random() * Math.PI * 2;
-        this.wanderTimer = 0;
-      }
-      get r() { return massToRadius(this.mass); }
-
-      update(dt, tDx, tDy, moving) {
-        if (!this.alive) return;
-        if (this.kind === 'ainawen') return;
-        const baseMax = SHARED.maxSpeed * this.speedMul;
-        const maxSpd = baseMax * (1 + Math.log10(this.mass + 1) * 0.15);
-        if (moving) {
-          const len = Math.sqrt(tDx * tDx + tDy * tDy) || 1;
-          this.vx += (tDx / len) * SHARED.accel * this.speedMul * 60 * dt;
-          this.vy += (tDy / len) * SHARED.accel * this.speedMul * 60 * dt;
-          const spd = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-          if (spd > maxSpd) {
-            this.vx = (this.vx / spd) * maxSpd;
-            this.vy = (this.vy / spd) * maxSpd;
-          }
-        } else {
-          const friction = Math.pow(0.01, dt / SHARED.frictionTime);
-          this.vx *= friction; this.vy *= friction;
-          if (Math.abs(this.vx) < 0.01) this.vx = 0;
-          if (Math.abs(this.vy) < 0.01) this.vy = 0;
-        }
-        this.x += this.vx; this.y += this.vy;
-        const r = this.r, ws = worldSize();
-        this.x = clamp(this.x, r, ws - r);
-        this.y = clamp(this.y, r, ws - r);
-        if (this.eatTimer > 0) this.eatTimer -= dt * 1000;
-      }
-
-      draw(ctx, sx, sy, scale) {
-        if (!this.alive) return;
-        const r = this.r * scale;
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(sx, sy, r, 0, Math.PI * 2);
-        ctx.closePath();
-        ctx.clip();
-        let img = null;
-        if (this.isPlayer) {
-          img = (this.eatTimer > 0 && images.eating) ? images.eating : images.puyi;
-        } else if (this.kind === 'ainawen') img = images.ainawen;
-        else if (this.kind === 'dust') img = images.dust;
-        else if (this.kind && images.monsters[this.kind]) img = images.monsters[this.kind];
-        if (img) {
-          ctx.drawImage(img, sx - r, sy - r, r * 2, r * 2);
-        } else {
-          ctx.fillStyle = '#2ecc71';
-          ctx.fill();
-        }
-        ctx.restore();
-        ctx.beginPath();
-        ctx.arc(sx, sy, r, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-        ctx.lineWidth = 2 * scale;
-        ctx.stroke();
-      }
-    }
-
-    function spawnLaurel(avoidX, avoidY) {
-      const ws = worldSize();
-      let x, y, tries = 0;
-      do {
-        x = 300 + Math.random() * (ws - 600);
-        y = 300 + Math.random() * (ws - 600);
-        tries++;
-      } while (avoidX != null && Math.hypot(x - avoidX, y - avoidY) < 400 && tries < 40);
-      return {
-        x, y, mass: 40,
-        emitting: true,
-        onScreenTimer: 0,
-        emitTimer: 0,
-        alive: true
-      };
-    }
-
-    function emitFoodFromLaurel() {
-      if (!laurel || !laurel.emitting || !laurel.alive) return;
-      const n = 6;
-      for (let i = 0; i < n; i++) {
-        const ang = (Math.PI * 2 * i) / n + Math.random() * 0.4;
-        const spd = 40 + Math.random() * 50;
-        foods.push({
-          x: laurel.x + Math.cos(ang) * 30,
-          y: laurel.y + Math.sin(ang) * 30,
-          mass: SHARED.foodMass,
-          vx: Math.cos(ang) * spd,
-          vy: Math.sin(ang) * spd,
-          color: `hsl(${40 + Math.random()*40}, 90%, 60%)`,
-          life: 4
-        });
-      }
-    }
-
-    function initLevel(level) {
-      currentLevel = level;
-      const cfg = LEVELS[level];
-      foods = []; bots = [];
-      ainawen = null; laurel = null;
-      const ws = cfg.worldSize;
-      const cx = ws / 2, cy = ws / 2;
-      player = new Ball(cx, cy + (level === 2 ? 400 : 0), SHARED.playerStartMass, true, null);
-
-      if (cfg.mode === 'normal') {
-        for (let i = 0; i < cfg.foodCount; i++) {
-          foods.push({
-            x: Math.random() * ws, y: Math.random() * ws,
-            mass: SHARED.foodMass, color: `hsl(${Math.random()*360},80%,60%)`
-          });
-        }
-        for (let i = 0; i < cfg.botCount; i++) {
-          let bx, by, tries = 0;
-          do {
-            bx = Math.random() * ws; by = Math.random() * ws; tries++;
-          } while (dist({x:bx,y:by}, player) < 300 && tries < 60);
-          const type = SHARED.monsterTypes[i % 3];
-          bots.push(new Ball(bx, by, type.mass, false, type.name));
-        }
-      } else if (cfg.mode === 'level2') {
-        ainawen = new Ball(cx, cy - 500, cfg.ainawenMass, false, 'ainawen');
-        for (let i = 0; i < cfg.dustCount; i++) {
-          let bx, by, tries = 0;
-          do {
-            bx = Math.random() * ws; by = Math.random() * ws; tries++;
-          } while ((dist({x:bx,y:by}, player) < 250 || dist({x:bx,y:by}, ainawen) < 250) && tries < 50);
-          const m = 8 + Math.random() * 18;
-          bots.push(new Ball(bx, by, Math.min(m, cfg.dustMaxMass), false, 'dust'));
-        }
-        laurel = spawnLaurel(ainawen.x, ainawen.y);
-      }
-
-      camera.scale = getCameraScale(player.mass);
-      camera.x = player.x; camera.y = player.y;
-      winOverlay.style.display = 'none';
-      loseOverlay.style.display = 'none';
-      massDisplay.textContent = Math.floor(player.mass);
-      goalDisplay.textContent = cfg.goalText;
-      joystickZone.style.display = 'none';
-    }
-
-    function setupInput() {
-      isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
-                 ('ontouchstart' in window && window.innerWidth < 900);
-
-      if (isMobile) {
-        const maxR = 50;
-        const handleStart = (e) => {
-          if (e.target === backBtn || backBtn.contains(e.target)) return;
-          e.preventDefault();
-          const t = e.touches[0];
-          if (player && running) {
-            const rect = canvas.getBoundingClientRect();
-            const sx = t.clientX - rect.left, sy = t.clientY - rect.top;
-            const p = worldToScreen(player.x, player.y);
-            if (Math.hypot(sx - p.x, sy - p.y) < player.r * camera.scale + 30) {
-              playSfxClick();
-            }
-          }
-          joy.active = true;
-          joy.originX = t.clientX; joy.originY = t.clientY;
-          joy.dx = 0; joy.dy = 0;
-          joystickZone.style.display = 'block';
-          joystickZone.style.left = t.clientX + 'px';
-          joystickZone.style.top = t.clientY + 'px';
-          knob.style.left = '42px'; knob.style.top = '42px';
-        };
-        const handleMove = (e) => {
-          if (!joy.active) return;
-          e.preventDefault();
-          const t = e.touches[0];
-          let dx = t.clientX - joy.originX, dy = t.clientY - joy.originY;
-          const len = Math.sqrt(dx*dx + dy*dy);
-          if (len > maxR) { dx = dx / len * maxR; dy = dy / len * maxR; }
-          joy.dx = dx / maxR; joy.dy = dy / maxR;
-          knob.style.left = (42 + dx) + 'px';
-          knob.style.top = (42 + dy) + 'px';
-        };
-        const handleEnd = () => {
-          joy.active = false; joy.dx = 0; joy.dy = 0;
-          joystickZone.style.display = 'none';
-        };
-        canvas.addEventListener('touchstart', handleStart, {passive:false});
-        canvas.addEventListener('touchmove', handleMove, {passive:false});
-        canvas.addEventListener('touchend', handleEnd);
-        canvas.addEventListener('touchcancel', handleEnd);
-      } else {
-        canvas.addEventListener('mousemove', e => {
-          const rect = canvas.getBoundingClientRect();
-          mouse.x = e.clientX - rect.left;
-          mouse.y = e.clientY - rect.top;
-        });
-        canvas.addEventListener('mousedown', e => {
-          if (e.button === 0) {
-            mouse.down = true;
-            if (player && running) {
-              const p = worldToScreen(player.x, player.y);
-              if (Math.hypot(mouse.x - p.x, mouse.y - p.y) < player.r * camera.scale + 20) {
-                playSfxClick();
-              }
-            }
-          }
-        });
-        window.addEventListener('mouseup', e => { if (e.button === 0) mouse.down = false; });
-        canvas.addEventListener('contextmenu', e => e.preventDefault());
-      }
-    }
-
-    function worldToScreen(wx, wy) {
-      const s = camera.scale;
-      return {
-        x: (wx - camera.x) * s + canvas.width / 2,
-        y: (wy - camera.y) * s + canvas.height / 2
-      };
-    }
-
-    function update(dt) {
-      if (!running || !player.alive) return;
-      const cfg = LEVELS[currentLevel];
-      const ws = worldSize();
-
-      let tDx = 0, tDy = 0, moving = false;
-      if (isMobile) {
-        if (joy.active && (Math.abs(joy.dx) > 0.05 || Math.abs(joy.dy) > 0.05)) {
-          tDx = joy.dx; tDy = joy.dy; moving = true;
-        }
-      } else {
-        tDx = mouse.x - canvas.width / 2;
-        tDy = mouse.y - canvas.height / 2;
-        moving = mouse.down;
-      }
-      player.update(dt, tDx, tDy, moving);
-
-      if (cfg.mode === 'normal') {
-        bots.forEach(bot => {
-          if (!bot.alive) return;
-          let dx, dy;
-          if (bot.mass > player.mass * 1.15 && dist(bot, player) < 600) {
-            dx = player.x - bot.x; dy = player.y - bot.y;
-          } else {
-            bot.wanderTimer -= dt;
-            if (bot.wanderTimer <= 0) {
-              bot.wanderAngle += (Math.random() - 0.5) * 1.8;
-              bot.wanderTimer = 1.2 + Math.random() * 2.5;
-            }
-            const margin = 200;
-            if (bot.x < margin) bot.wanderAngle = 0;
-            else if (bot.x > ws - margin) bot.wanderAngle = Math.PI;
-            if (bot.y < margin) bot.wanderAngle = Math.PI / 2;
-            else if (bot.y > ws - margin) bot.wanderAngle = -Math.PI / 2;
-            dx = Math.cos(bot.wanderAngle) * 60;
-            dy = Math.sin(bot.wanderAngle) * 60;
-          }
-          bot.update(dt, dx, dy, true);
-        });
-
-        for (let i = foods.length - 1; i >= 0; i--) {
-          const f = foods[i];
-          if (dist(player, f) < player.r - 2) {
-            player.mass += f.mass;
-            player.eatTimer = SHARED.eatAnimDuration;
-            foods.splice(i, 1);
-            foods.push({
-              x: Math.random() * ws, y: Math.random() * ws,
-              mass: SHARED.foodMass, color: `hsl(${Math.random()*360},80%,60%)`
-            });
-          }
-        }
-
-        for (let i = 0; i < bots.length; i++) {
-          const bot = bots[i];
-          if (!bot.alive || !player.alive) continue;
-          if (dist(player, bot) < Math.max(player.r, bot.r) * 0.85) {
-            if (player.mass > bot.mass * 1.12) {
-              player.mass += bot.mass * 0.9;
-              bot.alive = false;
-              player.eatTimer = SHARED.eatAnimDuration;
-            } else if (bot.mass > player.mass * 1.12) {
-              player.alive = false;
-            }
-          }
-        }
-
-        if (player.mass >= cfg.winMass) {
-          doWin('噗伊已经足够大啦～');
-        }
-      } else if (cfg.mode === 'level2') {
-        bots.forEach(bot => {
-          if (!bot.alive || bot.kind !== 'dust') return;
-          bot.wanderTimer -= dt;
-          if (bot.wanderTimer <= 0) {
-            bot.wanderAngle += (Math.random() - 0.5) * 1.8;
-            bot.wanderTimer = 1.5 + Math.random() * 2.5;
-          }
-          const margin = 200;
-          if (bot.x < margin) bot.wanderAngle = 0;
-          else if (bot.x > ws - margin) bot.wanderAngle = Math.PI;
-          if (bot.y < margin) bot.wanderAngle = Math.PI / 2;
-          else if (bot.y > ws - margin) bot.wanderAngle = -Math.PI / 2;
-          bot.update(dt, Math.cos(bot.wanderAngle) * 40, Math.sin(bot.wanderAngle) * 40, true);
-          if (bot.mass > cfg.dustMaxMass) bot.mass = cfg.dustMaxMass;
-        });
-
-        if (laurel && laurel.alive) {
-          const sp = worldToScreen(laurel.x, laurel.y);
-          const onScreen = sp.x > -40 && sp.x < canvas.width + 40 && sp.y > -40 && sp.y < canvas.height + 40;
-          if (onScreen && laurel.emitting) {
-            laurel.onScreenTimer += dt;
-            if (laurel.onScreenTimer >= 1) laurel.emitting = false;
-          }
-          if (laurel.emitting) {
-            laurel.emitTimer -= dt;
-            if (laurel.emitTimer <= 0) {
-              emitFoodFromLaurel();
-              laurel.emitTimer = 0.35;
-            }
-          }
-          if (dist(player, laurel) < player.r + massToRadius(laurel.mass) * 0.5) {
-            player.mass += cfg.laurelMass;
-            player.eatTimer = SHARED.eatAnimDuration;
-            laurel.alive = false;
-            laurel = spawnLaurel(ainawen ? ainawen.x : null, ainawen ? ainawen.y : null);
-          }
-        }
-
-        for (let i = foods.length - 1; i >= 0; i--) {
-          const f = foods[i];
-          if (f.vx != null) {
-            f.x += f.vx * dt; f.y += f.vy * dt;
-            f.vx *= 0.98; f.vy *= 0.98;
-            if (f.life != null) {
-              f.life -= dt;
-              if (f.life <= 0) { foods.splice(i, 1); continue; }
-            }
-          }
-          if (dist(player, f) < player.r - 2) {
-            player.mass += f.mass;
-            player.eatTimer = SHARED.eatAnimDuration;
-            foods.splice(i, 1);
-          }
-        }
-
-        if (ainawen && ainawen.alive) {
-          bots.forEach(bot => {
-            if (!bot.alive || bot.kind !== 'dust') return;
-            if (dist(ainawen, bot) < ainawen.r * 0.9) {
-              bot.alive = false;
-            }
-          });
-          if (player.mass >= cfg.ainawenMass && dist(player, ainawen) < Math.max(player.r, ainawen.r) * 0.85) {
-            ainawen.alive = false;
-            player.mass += ainawen.mass * 0.5;
-            player.eatTimer = SHARED.eatAnimDuration;
-            doWin('成功吃掉了爱娜温！');
-          }
-        }
-
-        bots.forEach(bot => {
-          if (!bot.alive || bot.kind !== 'dust') return;
-          if (dist(player, bot) < Math.max(player.r, bot.r) * 0.85) {
-            if (player.mass > bot.mass * 1.12) {
-              player.mass += bot.mass * 0.9;
-              bot.alive = false;
-              player.eatTimer = SHARED.eatAnimDuration;
-            }
-          }
-        });
-      }
-
-      camera.scale = getCameraScale(player.mass);
-      camera.x = player.x; camera.y = player.y;
-      massDisplay.textContent = Math.floor(player.mass);
-
-      if (!player.alive) {
-        running = false;
-        stopGameBgm();
-        loseOverlay.style.display = 'flex';
-      }
-    }
-
-    function doWin(msg) {
-      running = false;
-      stopGameBgm();
-      playSfxWin();
-      winMsg.textContent = msg;
-      winOverlay.style.display = 'flex';
-      if (currentLevel === 1) {
-        unlocked[2] = true;
-        saveUnlock();
-        btnLevel2.classList.remove('disabled');
-      }
-    }
-
-    function drawBackground() {
-      if (!images.bg) {
-        ctx.fillStyle = '#0d1b2a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        return;
-      }
-      const img = images.bg, cw = canvas.width, ch = canvas.height;
-      const ir = img.width / img.height, cr = cw / ch;
-      let dw, dh, dx, dy;
-      if (cr > ir) { dw = cw; dh = cw / ir; dx = 0; dy = (ch - dh) / 2; }
-      else { dh = ch; dw = ch * ir; dx = (cw - dw) / 2; dy = 0; }
-      ctx.drawImage(img, dx, dy, dw, dh);
-      ctx.fillStyle = 'rgba(10, 20, 35, 0.4)';
-      ctx.fillRect(0, 0, cw, ch);
-    }
-
-    function draw() {
-      drawBackground();
-      const s = camera.scale;
-      const ws = worldSize();
-
-      ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-      ctx.lineWidth = 1;
-      const grid = 100;
-      const viewW = canvas.width / s, viewH = canvas.height / s;
-      const startGX = Math.floor((camera.x - viewW / 2) / grid) * grid;
-      const startGY = Math.floor((camera.y - viewH / 2) / grid) * grid;
-      for (let x = startGX; x < camera.x + viewW / 2 + grid; x += grid) {
-        const p1 = worldToScreen(x, camera.y - viewH / 2);
-        const p2 = worldToScreen(x, camera.y + viewH / 2);
-        ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
-      }
-      for (let y = startGY; y < camera.y + viewH / 2 + grid; y += grid) {
-        const p1 = worldToScreen(camera.x - viewW / 2, y);
-        const p2 = worldToScreen(camera.x + viewW / 2, y);
-        ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
-      }
-
-      foods.forEach(f => {
-        const p = worldToScreen(f.x, f.y);
-        if (p.x < -20 || p.x > canvas.width + 20 || p.y < -20 || p.y > canvas.height + 20) return;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 5 * s, 0, Math.PI * 2);
-        ctx.fillStyle = f.color || '#ffcc44';
-        ctx.fill();
-      });
-
-      if (laurel && laurel.alive && images.laurel) {
-        const p = worldToScreen(laurel.x, laurel.y);
-        const r = massToRadius(laurel.mass) * s;
-        ctx.drawImage(images.laurel, p.x - r, p.y - r, r * 2, r * 2);
-      }
-
-      bots.forEach(b => {
-        const p = worldToScreen(b.x, b.y);
-        b.draw(ctx, p.x, p.y, s);
-      });
-      if (ainawen && ainawen.alive) {
-        const p = worldToScreen(ainawen.x, ainawen.y);
-        ainawen.draw(ctx, p.x, p.y, s);
-      }
-      if (player) {
-        const p = worldToScreen(player.x, player.y);
-        player.draw(ctx, p.x, p.y, s);
-      }
-    }
-
-    function loop(ts) {
-      if (!running) return;
-      const dt = Math.min((ts - lastTime) / 1000, 0.05);
-      lastTime = ts;
-      update(dt);
-      draw();
-      requestAnimationFrame(loop);
-    }
-
-    function startGame(level) {
-      const cfg = LEVELS[level];
-      if (!cfg) return;
-      menu.style.display = 'none';
-      gameContainer.style.display = 'block';
-      resize();
-      loadImages(cfg).then(() => {
-        initLevel(level);
-        playGameBgm(cfg.bgm);
-        running = true;
-        lastTime = performance.now();
-        requestAnimationFrame(loop);
-      });
-    }
-
-    function backToMenu() {
-      running = false;
-      stopGameBgm();
-      gameContainer.style.display = 'none';
-      menu.style.display = 'flex';
-      winOverlay.style.display = 'none';
-      loseOverlay.style.display = 'none';
-      joystickZone.style.display = 'none';
-      playMenuBgm();
-    }
-
-    function resize() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    }
-
-    document.querySelectorAll('.level-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        if (btn.classList.contains('disabled')) return;
-        const lv = parseInt(btn.dataset.level, 10);
-        if (LEVELS[lv]) startGame(lv);
-      });
-    });
-    backBtn.addEventListener('click', backToMenu);
-    document.getElementById('next-level-btn').addEventListener('click', backToMenu);
-    document.getElementById('retry-btn').addEventListener('click', () => {
-      winOverlay.style.display = 'none';
-      loseOverlay.style.display = 'none';
-      const cfg = LEVELS[currentLevel];
-      initLevel(currentLevel);
-      playGameBgm(cfg.bgm);
-      running = true;
-      lastTime = performance.now();
-      requestAnimationFrame(loop);
-    });
-    document.getElementById('menu-btn').addEventListener('click', backToMenu);
-    window.addEventListener('resize', () => { if (running) resize(); });
-
-    function tryMenuMusic() {
-      playMenuBgm();
-      document.removeEventListener('click', tryMenuMusic);
-      document.removeEventListener('touchstart', tryMenuMusic);
-    }
-    document.addEventListener('click', tryMenuMusic);
-    document.addEventListener('touchstart', tryMenuMusic);
-
-    setupInput();
-    initAudio();
-    loadUnlock();
-    loadImages(LEVELS[1]).then(() => console.log('噗伊大作战 资源就绪'));
-  </script>
+<div id="menu">
+<h1>噗伊大作战</h1>
+<button class="level-btn" data-level="1">第一关</button>
+<button class="level-btn disabled" data-level="2" id="btn-level2">第二关</button>
+<button class="level-btn disabled" data-level="3">第三关</button>
+<button class="level-btn disabled" data-level="4">第四关</button>
+<button class="level-btn disabled" data-level="5">第五关</button>
+<button class="level-btn disabled" data-level="endless">无尽模式</button>
+</div>
+<div id="game-container">
+<canvas id="gameCanvas"></canvas>
+<div id="hud">质量: <span id="mass-display">10</span> | <span id="goal-display">目标: 500</span></div>
+<button id="back-btn">返回主页</button>
+<div id="joystick-zone"><div id="joystick-base"><div id="joystick-knob"></div></div></div>
+<div id="suck-btn">吸附</div>
+<div id="win-overlay"><h2>通关成功！</h2><p id="win-msg">噗伊已经足够大啦～</p><button class="overlay-btn" id="next-level-btn">返回主页</button></div>
+<div id="lose-overlay"><h2>被抓到了</h2><button class="overlay-btn" id="retry-btn">再试一次</button><button class="overlay-btn" id="menu-btn">返回主页</button></div>
+</div>
+<script>
+const LEVELS={1:{winMass:500,foodCount:560,botCount:60,worldSize:6000,bgImage:'photo/Story_2f_cocoon_B.webp',bgm:'BGM/Passion_Red.ogg',mode:'normal',goalText:'目标: 500'},2:{worldSize:5000,bgImage:'photo/Story_4f_lostshelter.webp',bgm:'BGM/Passion_Red.ogg',mode:'level2',dustCount:28,dustMaxMass:30,ainawenMass:300,laurelMass:100,goalText:'目标: 吃掉爱娜温'}};
+const SHARED={playerStartMass:10,foodMass:1.5,maxSpeed:4.5,playerSpeedMul:0.5,botSpeedMul:0.25,accel:0.35,frictionTime:0.3,eatAnimDuration:100,imgPuyi:'photo/puyi.png',imgEating:'photo/puyi-eating.png',imgAinawen:'photo/ainawen.png',imgDust:'photo/ainawen-1.webp',imgLaurel:'photo/赎罪的月桂冠.webp',menuBgm:'BGM/Timewalker.ogg',sfxWin:'BGM/audio_last_2s.m4a',sfxClick:'BGM/audio_first_1s.m4a',monsterTypes:[{name:'small',mass:6,img:'photo/xiaoguai2.png'},{name:'medium',mass:16,img:'photo/xiaoguai3.png'},{name:'large',mass:32,img:'photo/xiaoguai4.png'}]};
+const menu=document.getElementById('menu'),gameContainer=document.getElementById('game-container'),canvas=document.getElementById('gameCanvas'),ctx=canvas.getContext('2d');
+const massDisplay=document.getElementById('mass-display'),goalDisplay=document.getElementById('goal-display'),backBtn=document.getElementById('back-btn');
+const joystickZone=document.getElementById('joystick-zone'),knob=document.getElementById('joystick-knob');
+const winOverlay=document.getElementById('win-overlay'),loseOverlay=document.getElementById('lose-overlay'),winMsg=document.getElementById('win-msg');
+const btnLevel2=document.getElementById('btn-level2'),suckBtn=document.getElementById('suck-btn');
+let running=false,currentLevel=1,player,foods,bots,ainawen=null,laurel=null;
+let camera={x:0,y:0,scale:1},mouse={x:0,y:0,down:false},joy={active:false,dx:0,dy:0,originX:0,originY:0};
+let images={puyi:null,eating:null,monsters:{},bg:null,ainawen:null,dust:null,laurel:null};
+let menuAudio=null,gameBgm=null,sfxWin=null,sfxClick=null,lastTime=0,isMobile=false;
+let unlocked={1:true,2:false},suckActive=false,suckDir={x:0,y:1};
+function massToRadius(m){return Math.sqrt(m)*6}
+function dist(a,b){const dx=a.x-b.x,dy=a.y-b.y;return Math.sqrt(dx*dx+dy*dy)}
+function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
+function getCameraScale(mass){const steps=Math.floor(mass/50);let s=Math.max(0.28,1-steps*0.09);if(isMobile){s*=0.58;s=Math.max(0.22,s)}return s}
+function worldSize(){return(LEVELS[currentLevel]&&LEVELS[currentLevel].worldSize)||6000}
+function loadUnlock(){try{const s=localStorage.getItem('puyi_unlock');if(s)unlocked=JSON.parse(s)}catch(e){}if(unlocked[2])btnLevel2.classList.remove('disabled')}
+function saveUnlock(){try{localStorage.setItem('puyi_unlock',JSON.stringify(unlocked))}catch(e){}}
+function initAudio(){menuAudio=new Audio(SHARED.menuBgm);menuAudio.loop=true;menuAudio.volume=0.4;sfxWin=new Audio(SHARED.sfxWin);sfxWin.volume=0.7;sfxClick=new Audio(SHARED.sfxClick);sfxClick.volume=0.7}
+function playMenuBgm(){if(!menuAudio)initAudio();stopGameBgm();menuAudio.currentTime=0;menuAudio.play().catch(()=>{})}
+function stopMenuBgm(){if(menuAudio){menuAudio.pause();menuAudio.currentTime=0}}
+function playGameBgm(src){stopMenuBgm();if(gameBgm)gameBgm.pause();gameBgm=new Audio(src);gameBgm.loop=true;gameBgm.volume=0.45;gameBgm.play().catch(()=>{})}
+function stopGameBgm(){if(gameBgm){gameBgm.pause();gameBgm.currentTime=0}}
+function playSfxWin(){if(!sfxWin)initAudio();sfxWin.currentTime=0;sfxWin.play().catch(()=>{})}
+function playSfxClick(){if(!sfxClick)initAudio();sfxClick.currentTime=0;sfxClick.play().catch(()=>{})}
+function loadImages(levelCfg){const list=[{key:'puyi',src:SHARED.imgPuyi},{key:'eating',src:SHARED.imgEating},{key:'bg',src:levelCfg.bgImage},{key:'ainawen',src:SHARED.imgAinawen},{key:'dust',src:SHARED.imgDust},{key:'laurel',src:SHARED.imgLaurel}];SHARED.monsterTypes.forEach(t=>list.push({key:'m_'+t.name,src:t.img}));return Promise.all(list.map(item=>new Promise(res=>{const img=new Image();img.onload=()=>{if(item.key.startsWith('m_'))images.monsters[item.key.slice(2)]=img;else images[item.key]=img;res()};img.onerror=()=>res();img.src=item.src})))}
+class Ball{constructor(x,y,mass,isPlayer,kind){this.x=x;this.y=y;this.mass=mass;this.vx=0;this.vy=0;this.isPlayer=!!isPlayer;this.kind=kind||null;this.eatTimer=0;this.alive=true;this.speedMul=isPlayer?SHARED.playerSpeedMul:SHARED.botSpeedMul;this.wanderAngle=Math.random()*Math.PI*2;this.wanderTimer=0}get r(){return massToRadius(this.mass)}
+update(dt,tDx,tDy,moving){if(!this.alive)return;if(this.kind==='ainawen')return;const baseMax=SHARED.maxSpeed*this.speedMul;const maxSpd=baseMax*(1+Math.log10(this.mass+1)*0.15);if(moving){const len=Math.sqrt(tDx*tDx+tDy*tDy)||1;this.vx+=(tDx/len)*SHARED.accel*this.speedMul*60*dt;this.vy+=(tDy/len)*SHARED.accel*this.speedMul*60*dt;const spd=Math.sqrt(this.vx*this.vx+this.vy*this.vy);if(spd>maxSpd){this.vx=(this.vx/spd)*maxSpd;this.vy=(this.vy/spd)*maxSpd}}else{const friction=Math.pow(0.01,dt/SHARED.frictionTime);this.vx*=friction;this.vy*=friction;if(Math.abs(this.vx)<0.01)this.vx=0;if(Math.abs(this.vy)<0.01)this.vy=0}this.x+=this.vx;this.y+=this.vy;const r=this.r,ws=worldSize();this.x=clamp(this.x,r,ws-r);this.y=clamp(this.y,r,ws-r);if(this.eatTimer>0)this.eatTimer-=dt*1000}
+draw(ctx,sx,sy,scale){if(!this.alive)return;const r=this.r*scale;ctx.save();ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);ctx.closePath();ctx.clip();let img=null;if(this.isPlayer)img=(this.eatTimer>0&&images.eating)?images.eating:images.puyi;else if(this.kind==='ainawen')img=images.ainawen;else if(this.kind==='dust')img=images.dust;else if(this.kind&&images.monsters[this.kind])img=images.monsters[this.kind];if(img)ctx.drawImage(img,sx-r,sy-r,r*2,r*2);else{ctx.fillStyle='#2ecc71';ctx.fill()}ctx.restore();ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);ctx.strokeStyle='rgba(0,0,0,0.35)';ctx.lineWidth=2*scale;ctx.stroke()}}
+function spawnLaurel(avoidX,avoidY){const ws=worldSize();let x,y,tries=0;do{x=300+Math.random()*(ws-600);y=300+Math.random()*(ws-600);tries++}while(avoidX!=null&&Math.hypot(x-avoidX,y-avoidY)<400&&tries<40);return{x,y,mass:40,emitting:true,onScreenTimer:0,emitTimer:0,alive:true}}
+function emitFoodFromLaurel(){if(!laurel||!laurel.emitting||!laurel.alive)return;const rings=3,perRing=10;for(let ring=0;ring<rings;ring++){const baseSpd=120+ring*80+Math.random()*40;const offset=ring*0.15+Math.random()*0.1;for(let i=0;i<perRing;i++){const ang=(Math.PI*2*i)/perRing+offset;foods.push({x:laurel.x+Math.cos(ang)*(20+ring*15),y:laurel.y+Math.sin(ang)*(20+ring*15),mass:SHARED.foodMass,vx:Math.cos(ang)*baseSpd,vy:Math.sin(ang)*baseSpd,color:`hsl(${35+Math.random()*50},90%,60%)`,life:12,fromLaurel:true})}}}
+function initLevel(level){currentLevel=level;const cfg=LEVELS[level];foods=[];bots=[];ainawen=null;laurel=null;const ws=cfg.worldSize;const cx=ws/2,cy=ws/2;player=new Ball(cx,cy+(level===2?400:0),SHARED.playerStartMass,true,null);if(cfg.mode==='normal'){for(let i=0;i<cfg.foodCount;i++)foods.push({x:Math.random()*ws,y:Math.random()*ws,mass:SHARED.foodMass,color:`hsl(${Math.random()*360},80%,60%)`});for(let i=0;i<cfg.botCount;i++){let bx,by,tries=0;do{bx=Math.random()*ws;by=Math.random()*ws;tries++}while(dist({x:bx,y:by},player)<300&&tries<60);const type=SHARED.monsterTypes[i%3];bots.push(new Ball(bx,by,type.mass,false,type.name))}}else if(cfg.mode==='level2'){ainawen=new Ball(cx,cy-500,cfg.ainawenMass,false,'ainawen');for(let i=0;i<cfg.dustCount;i++){let bx,by,tries=0;do{bx=Math.random()*ws;by=Math.random()*ws;tries++}while((dist({x:bx,y:by},player)<250||dist({x:bx,y:by},ainawen)<250)&&tries<50);const m=8+Math.random()*18;bots.push(new Ball(bx,by,Math.min(m,cfg.dustMaxMass),false,'dust'))}laurel=spawnLaurel(ainawen.x,ainawen.y)}camera.scale=getCameraScale(player.mass);camera.x=player.x;camera.y=player.y;winOverlay.style.display='none';loseOverlay.style.display='none';massDisplay.textContent=Math.floor(player.mass);goalDisplay.textContent=cfg.goalText;joystickZone.style.display='none';suckActive=false;if(isMobile&&level>=2){suckBtn.style.display='flex';suckBtn.classList.remove('active')}else suckBtn.style.display='none'}
+function setupInput(){isMobile=/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)||('ontouchstart' in window&&window.innerWidth<900);if(isMobile){const maxR=50;const handleStart=e=>{if(e.target===backBtn||backBtn.contains(e.target)||e.target===suckBtn||suckBtn.contains(e.target))return;e.preventDefault();const t=e.touches[0];if(player&&running){const rect=canvas.getBoundingClientRect();const sx=t.clientX-rect.left,sy=t.clientY-rect.top;const p=worldToScreen(player.x,player.y);if(Math.hypot(sx-p.x,sy-p.y)<player.r*camera.scale+30)playSfxClick()}joy.active=true;joy.originX=t.clientX;joy.originY=t.clientY;joy.dx=0;joy.dy=0;joystickZone.style.display='block';joystickZone.style.left=t.clientX+'px';joystickZone.style.top=t.clientY+'px';knob.style.left='42px';knob.style.top='42px'};const handleMove=e=>{if(!joy.active)return;e.preventDefault();const t=e.touches[0];let dx=t.clientX-joy.originX,dy=t.clientY-joy.originY;const len=Math.sqrt(dx*dx+dy*dy);if(len>maxR){dx=dx/len*maxR;dy=dy/len*maxR}joy.dx=dx/maxR;joy.dy=dy/maxR;knob.style.left=(42+dx)+'px';knob.style.top=(42+dy)+'px'};const handleEnd=()=>{joy.active=false;joy.dx=0;joy.dy=0;joystickZone.style.display='none'};canvas.addEventListener('touchstart',handleStart,{passive:false});canvas.addEventListener('touchmove',handleMove,{passive:false});canvas.addEventListener('touchend',handleEnd);canvas.addEventListener('touchcancel',handleEnd)}else{canvas.addEventListener('mousemove',e=>{const rect=canvas.getBoundingClientRect();mouse.x=e.clientX-rect.left;mouse.y=e.clientY-rect.top});canvas.addEventListener('mousedown',e=>{if(e.button===0){mouse.down=true;if(player&&running){const p=worldToScreen(player.x,player.y);if(Math.hypot(mouse.x-p.x,mouse.y-p.y)<player.r*camera.scale+20)playSfxClick()}}if(e.button===2&&currentLevel>=2){e.preventDefault();suckActive=true}});window.addEventListener('mouseup',e=>{if(e.button===0)mouse.down=false;if(e.button===2)suckActive=false});canvas.addEventListener('contextmenu',e=>e.preventDefault())}
+const suckStart=e=>{e.preventDefault();e.stopPropagation();if(currentLevel<2)return;suckActive=true;suckBtn.classList.add('active')};const suckEnd=e=>{if(e){e.preventDefault();e.stopPropagation()}suckActive=false;suckBtn.classList.remove('active')};suckBtn.addEventListener('touchstart',suckStart,{passive:false});suckBtn.addEventListener('touchend',suckEnd,{passive:false});suckBtn.addEventListener('touchcancel',suckEnd,{passive:false});suckBtn.addEventListener('mousedown',suckStart);window.addEventListener('mouseup',()=>{if(suckBtn.classList.contains('active'))suckEnd()})}
+function worldToScreen(wx,wy){const s=camera.scale;return{x:(wx-camera.x)*s+canvas.width/2,y:(wy-camera.y)*s+canvas.height/2}}
+function applySuck(dt){const range=180+player.r*3;const halfAngle=Math.PI/3.2;const dirAng=Math.atan2(suckDir.y,suckDir.x);const pull=220*dt;const tryPull=(obj,isEnemy)=>{if(!obj||(isEnemy&&!obj.alive))return;if(isEnemy&&obj.mass>=player.mass)return;const dx=obj.x-player.x,dy=obj.y-player.y;const d=Math.hypot(dx,dy);if(d<1||d>range)return;let ang=Math.atan2(dy,dx)-dirAng;while(ang>Math.PI)ang-=Math.PI*2;while(ang<-Math.PI)ang+=Math.PI*2;if(Math.abs(ang)>halfAngle)return;const str=pull*(1-d/range);obj.x-=(dx/d)*str;obj.y-=(dy/d)*str;if(obj.vx!=null){obj.vx-=(dx/d)*str*0.5;obj.vy-=(dy/d)*str*0.5}};foods.forEach(f=>tryPull(f,false));bots.forEach(b=>tryPull(b,true))}
+function update(dt){if(!running||!player.alive)return;const cfg=LEVELS[currentLevel];const ws=worldSize();let tDx=0,tDy=0,moving=false;if(isMobile){if(joy.active&&(Math.abs(joy.dx)>0.05||Math.abs(joy.dy)>0.05)){tDx=joy.dx;tDy=joy.dy;moving=true}}else{tDx=mouse.x-canvas.width/2;tDy=mouse.y-canvas.height/2;moving=mouse.down}player.update(dt,tDx,tDy,moving);if(currentLevel>=2){if(isMobile){if(Math.abs(joy.dx)>0.05||Math.abs(joy.dy)>0.05){const len=Math.hypot(joy.dx,joy.dy)||1;suckDir.x=joy.dx/len;suckDir.y=joy.dy/len}}else{const len=Math.hypot(tDx,tDy)||1;suckDir.x=tDx/len;suckDir.y=tDy/len}}if(suckActive&&currentLevel>=2&&player.alive)applySuck(dt);if(cfg.mode==='normal'){bots.forEach(bot=>{if(!bot.alive)return;let dx,dy;if(bot.mass>player.mass*1.15&&dist(bot,player)<600){dx=player.x-bot.x;dy=player.y-bot.y}else{bot.wanderTimer-=dt;if(bot.wanderTimer<=0){bot.wanderAngle+=(Math.random()-0.5)*1.8;bot.wanderTimer=1.2+Math.random()*2.5}const margin=200;if(bot.x<margin)bot.wanderAngle=0;else if(bot.x>ws-margin)bot.wanderAngle=Math.PI;if(bot.y<margin)bot.wanderAngle=Math.PI/2;else if(bot.y>ws-margin)bot.wanderAngle=-Math.PI/2;dx=Math.cos(bot.wanderAngle)*60;dy=Math.sin(bot.wanderAngle)*60}bot.update(dt,dx,dy,true)});for(let i=foods.length-1;i>=0;i--){const f=foods[i];if(dist(player,f)<player.r-2){player.mass+=f.mass;player.eatTimer=SHARED.eatAnimDuration;foods.splice(i,1);foods.push({x:Math.random()*ws,y:Math.random()*ws,mass:SHARED.foodMass,color:`hsl(${Math.random()*360},80%,60%)`})}}for(let i=0;i<bots.length;i++){const bot=bots[i];if(!bot.alive||!player.alive)continue;if(dist(player,bot)<Math.max(player.r,bot.r)*0.85){if(player.mass>bot.mass*1.12){player.mass+=bot.mass*0.9;bot.alive=false;player.eatTimer=SHARED.eatAnimDuration}else if(bot.mass>player.mass*1.12)player.alive=false}}if(player.mass>=cfg.winMass)doWin('噗伊已经足够大啦～')}else if(cfg.mode==='level2'){bots.forEach(bot=>{if(!bot.alive||bot.kind!=='dust')return;bot.wanderTimer-=dt;if(bot.wanderTimer<=0){bot.wanderAngle+=(Math.random()-0.5)*1.8;bot.wanderTimer=1.5+Math.random()*2.5}const margin=200;if(bot.x<margin)bot.wanderAngle=0;else if(bot.x>ws-margin)bot.wanderAngle=Math.PI;if(bot.y<margin)bot.wanderAngle=Math.PI/2;else if(bot.y>ws-margin)bot.wanderAngle=-Math.PI/2;bot.update(dt,Math.cos(bot.wanderAngle)*40,Math.sin(bot.wanderAngle)*40,true);if(bot.mass>cfg.dustMaxMass)bot.mass=cfg.dustMaxMass});if(laurel&&laurel.alive){const sp=worldToScreen(laurel.x,laurel.y);const onScreen=sp.x>-40&&sp.x<canvas.width+40&&sp.y>-40&&sp.y<canvas.height+40;if(onScreen&&laurel.emitting){laurel.onScreenTimer+=dt;if(laurel.onScreenTimer>=1)laurel.emitting=false}if(laurel.emitting){laurel.emitTimer-=dt;if(laurel.emitTimer<=0){emitFoodFromLaurel();laurel.emitTimer=0.5}}if(dist(player,laurel)<player.r+massToRadius(laurel.mass)*0.5){player.mass+=cfg.laurelMass;player.eatTimer=SHARED.eatAnimDuration;laurel.alive=false;laurel=spawnLaurel(ainawen?ainawen.x:null,ainawen?ainawen.y:null)}}for(let i=foods.length-1;i>=0;i--){const f=foods[i];if(f.vx!=null){f.x+=f.vx*dt;f.y+=f.vy*dt;const fric=f.fromLaurel?0.995:0.98;f.vx*=fric;f.vy*=fric;if(f.life!=null){f.life-=dt;if(f.life<=0){foods.splice(i,1);continue}}if(f.x<0||f.y<0||f.x>ws||f.y>ws){foods.splice(i,1);continue}}if(dist(player,f)<player.r-2){player.mass+=f.mass;player.eatTimer=SHARED.eatAnimDuration;foods.splice(i,1)}}if(ainawen&&ainawen.alive){bots.forEach(bot=>{if(!bot.alive||bot.kind!=='dust')return;if(dist(ainawen,bot)<ainawen.r*0.9)bot.alive=false});if(player.mass>=cfg.ainawenMass&&dist(player,ainawen)<Math.max(player.r,ainawen.r)*0.85){ainawen.alive=false;player.mass+=ainawen.mass*0.5;player.eatTimer=SHARED.eatAnimDuration;doWin('成功吃掉了爱娜温！')}}bots.forEach(bot=>{if(!bot.alive||bot.kind!=='dust')return;if(dist(player,bot)<Math.max(player.r,bot.r)*0.85){if(player.mass>bot.mass*1.12){player.mass+=bot.mass*0.9;bot.alive=false;player.eatTimer=SHARED.eatAnimDuration}}})}camera.scale=getCameraScale(player.mass);camera.x=player.x;camera.y=player.y;massDisplay.textContent=Math.floor(player.mass);if(!player.alive){running=false;stopGameBgm();loseOverlay.style.display='flex'}}
+function doWin(msg){running=false;stopGameBgm();playSfxWin();winMsg.textContent=msg;winOverlay.style.display='flex';if(currentLevel===1){unlocked[2]=true;saveUnlock();btnLevel2.classList.remove('disabled')}}
+function drawBackground(){if(!images.bg){ctx.fillStyle='#0d1b2a';ctx.fillRect(0,0,canvas.width,canvas.height);return}const img=images.bg,cw=canvas.width,ch=canvas.height;const ir=img.width/img.height,cr=cw/ch;let dw,dh,dx,dy;if(cr>ir){dw=cw;dh=cw/ir;dx=0;dy=(ch-dh)/2}else{dh=ch;dw=ch*ir;dx=(cw-dw)/2;dy=0}ctx.drawImage(img,dx,dy,dw,dh);ctx.fillStyle='rgba(10,20,35,0.4)';ctx.fillRect(0,0,cw,ch)}
+function draw(){drawBackground();const s=camera.scale;ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.lineWidth=1;const grid=100;const viewW=canvas.width/s,viewH=canvas.height/s;const startGX=Math.floor((camera.x-viewW/2)/grid)*grid;const startGY=Math.floor((camera.y-viewH/2)/grid)*grid;for(let x=startGX;x<camera.x+viewW/2+grid;x+=grid){const p1=worldToScreen(x,camera.y-viewH/2),p2=worldToScreen(x,camera.y+viewH/2);ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);ctx.stroke()}for(let y=startGY;y<camera.y+viewH/2+grid;y+=grid){const p1=worldToScreen(camera.x-viewW/2,y),p2=worldToScreen(camera.x+viewW/2,y);ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);ctx.stroke()}foods.forEach(f=>{const p=worldToScreen(f.x,f.y);if(p.x<-20||p.x>canvas.width+20||p.y<-20||p.y>canvas.height+20)return;ctx.beginPath();ctx.arc(p.x,p.y,5*s,0,Math.PI*2);ctx.fillStyle=f.color||'#ffcc44';ctx.fill()});if(laurel&&laurel.alive&&images.laurel){const p=worldToScreen(laurel.x,laurel.y);const r=massToRadius(laurel.mass)*s;ctx.drawImage(images.laurel,p.x-r,p.y-r,r*2,r*2)}bots.forEach(b=>{const p=worldToScreen(b.x,b.y);b.draw(ctx,p.x,p.y,s)});if(ainawen&&ainawen.alive){const p=worldToScreen(ainawen.x,ainawen.y);ainawen.draw(ctx,p.x,p.y,s)}if(player){const p=worldToScreen(player.x,player.y);player.draw(ctx,p.x,p.y,s)}}
+function loop(ts){if(!running)return;const dt=Math.min((ts-lastTime)/1000,0.05);lastTime=ts;update(dt);draw();requestAnimationFrame(loop)}
+function startGame(level){const cfg=LEVELS[level];if(!cfg)return;menu.style.display='none';gameContainer.style.display='block';resize();loadImages(cfg).then(()=>{initLevel(level);playGameBgm(cfg.bgm);running=true;lastTime=performance.now();requestAnimationFrame(loop)})}
+function backToMenu(){running=false;stopGameBgm();gameContainer.style.display='none';menu.style.display='flex';winOverlay.style.display='none';loseOverlay.style.display='none';joystickZone.style.display='none';suckBtn.style.display='none';suckActive=false;playMenuBgm()}
+function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight}
+document.querySelectorAll('.level-btn').forEach(btn=>{btn.addEventListener('click',()=>{if(btn.classList.contains('disabled'))return;const lv=parseInt(btn.dataset.level,10);if(LEVELS[lv])startGame(lv)})});
+backBtn.addEventListener('click',backToMenu);
+document.getElementById('next-level-btn').addEventListener('click',backToMenu);
+document.getElementById('retry-btn').addEventListener('click',()=>{winOverlay.style.display='none';loseOverlay.style.display='none';const cfg=LEVELS[currentLevel];initLevel(currentLevel);playGameBgm(cfg.bgm);running=true;lastTime=performance.now();requestAnimationFrame(loop)});
+document.getElementById('menu-btn').addEventListener('click',backToMenu);
+window.addEventListener('resize',()=>{if(running)resize()});
+function tryMenuMusic(){playMenuBgm();document.removeEventListener('click',tryMenuMusic);document.removeEventListener('touchstart',tryMenuMusic)}
+document.addEventListener('click',tryMenuMusic);document.addEventListener('touchstart',tryMenuMusic);
+setupInput();initAudio();loadUnlock();loadImages(LEVELS[1]).then(()=>console.log('噗伊大作战 资源就绪'));
+</script>
 </body>
 </html>
