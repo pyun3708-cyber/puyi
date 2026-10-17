@@ -126,7 +126,7 @@
 
   <div id="game-container">
     <canvas id="gameCanvas"></canvas>
-    <div id="hud">质量: <span id="mass-display">10</span> | 目标: 80</div>
+    <div id="hud">质量: <span id="mass-display">10</span> | 目标: 300</div>
     <button id="back-btn">返回主页</button>
     <div id="joystick-zone">
       <div id="joystick-base">
@@ -148,22 +148,22 @@
   <script>
     // ============== 配置 ==============
     const CONFIG = {
-      winMass: 80,
-      foodCount: 80,
-      botCount: 12,
-      worldSize: 3000,
+      winMass: 300,
+      foodCount: 160,        // 地图变大，食物也增加
+      botCount: 28,          // 敌人相应变多
+      worldSize: 6000,       // 地图变大一倍
       playerStartMass: 10,
       foodMass: 1.5,
-      maxSpeed: 4.5,          // 基础速度
-      playerSpeedMul: 0.5,   // 玩家速度变为原来的 1/2
-      botSpeedMul: 0.25,     // 小怪速度变为原来的 1/4
+      maxSpeed: 4.5,
+      playerSpeedMul: 0.5,
+      botSpeedMul: 0.25,
       accel: 0.35,
       frictionTime: 0.3,
       eatAnimDuration: 100,
       imgPuyi: 'photo/puyi.png',
       imgEating: 'photo/puyi-eating.png',
+      bgImage: 'photo/Story_2f_cocoon_B.webp',
       bgm: 'BGM/Passion_Red.ogg',
-      // 三种小怪：大中小
       monsterTypes: [
         { name: 'small',  mass: 6,  img: 'photo/xiaoguai2.png' },
         { name: 'medium', mass: 16, img: 'photo/xiaoguai3.png' },
@@ -186,10 +186,10 @@
     // ============== 状态 ==============
     let running = false;
     let player, foods, bots;
-    let camera = { x: 0, y: 0 };
+    let camera = { x: 0, y: 0, scale: 1 };
     let mouse = { x: 0, y: 0, down: false };
     let joy = { active: false, dx: 0, dy: 0 };
-    let images = { puyi: null, eating: null, monsters: {} };
+    let images = { puyi: null, eating: null, monsters: {}, bg: null };
     let bgmAudio = null;
     let lastTime = 0;
     let isMobile = false;
@@ -208,6 +208,13 @@
       return Math.max(min, Math.min(max, v));
     }
 
+    // 根据质量计算镜头缩放：每 50 分拉远一点
+    function getCameraScale(mass) {
+      // 每 50 质量缩放一级，最低 0.35
+      const steps = Math.floor(mass / 50);
+      return Math.max(0.35, 1 - steps * 0.09);
+    }
+
     // ============== 加载资源 ==============
     function loadImages() {
       const promises = [
@@ -222,6 +229,12 @@
           img.onload = () => { images.eating = img; res(); };
           img.onerror = () => { images.eating = null; res(); };
           img.src = CONFIG.imgEating;
+        }),
+        new Promise(res => {
+          const img = new Image();
+          img.onload = () => { images.bg = img; res(); };
+          img.onerror = () => { images.bg = null; res(); };
+          img.src = CONFIG.bgImage;
         })
       ];
       CONFIG.monsterTypes.forEach(t => {
@@ -244,9 +257,7 @@
     function playBgm() {
       if (!bgmAudio) initBgm();
       bgmAudio.currentTime = 0;
-      bgmAudio.play().catch(() => {
-        // 浏览器可能阻止自动播放，用户交互后会再试
-      });
+      bgmAudio.play().catch(() => {});
     }
 
     function stopBgm() {
@@ -265,7 +276,7 @@
         this.vx = 0;
         this.vy = 0;
         this.isPlayer = isPlayer;
-        this.monsterType = monsterType; // 'small' | 'medium' | 'large' | null
+        this.monsterType = monsterType;
         this.eatTimer = 0;
         this.alive = true;
         this.speedMul = isPlayer ? CONFIG.playerSpeedMul : CONFIG.botSpeedMul;
@@ -307,11 +318,10 @@
         if (this.eatTimer > 0) this.eatTimer -= dt * 1000;
       }
 
-      draw(ctx, camX, camY) {
+      // 绘制时传入 scale，坐标已是屏幕坐标（经过相机变换）
+      draw(ctx, sx, sy, scale) {
         if (!this.alive) return;
-        const sx = this.x - camX;
-        const sy = this.y - camY;
-        const r = this.r;
+        const r = this.r * scale;
 
         ctx.save();
         ctx.beginPath();
@@ -326,7 +336,6 @@
           const img = images.monsters[this.monsterType];
           ctx.drawImage(img, sx - r, sy - r, r * 2, r * 2);
         } else {
-          // 兜底颜色
           ctx.fillStyle = this.monsterType === 'large' ? '#e74c3c' :
                           this.monsterType === 'medium' ? '#f39c12' : '#2ecc71';
           ctx.fill();
@@ -336,7 +345,7 @@
         ctx.beginPath();
         ctx.arc(sx, sy, r, 0, Math.PI * 2);
         ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2 * scale;
         ctx.stroke();
       }
     }
@@ -358,21 +367,21 @@
         });
       }
 
-      // 只生成大中小三种固定大小的小怪
       for (let i = 0; i < CONFIG.botCount; i++) {
         let bx, by, tries = 0;
         do {
           bx = Math.random() * CONFIG.worldSize;
           by = Math.random() * CONFIG.worldSize;
           tries++;
-        } while (dist({x:bx,y:by}, player) < 250 && tries < 50);
+        } while (dist({x:bx,y:by}, player) < 300 && tries < 60);
 
-        const type = CONFIG.monsterTypes[i % 3]; // 均匀分布三种
+        const type = CONFIG.monsterTypes[i % 3];
         bots.push(new Ball(bx, by, type.mass, false, type.name));
       }
 
-      camera.x = player.x - canvas.width / 2;
-      camera.y = player.y - canvas.height / 2;
+      camera.scale = 1;
+      camera.x = player.x;
+      camera.y = player.y;
       winOverlay.style.display = 'none';
       loseOverlay.style.display = 'none';
       massDisplay.textContent = Math.floor(player.mass);
@@ -467,7 +476,6 @@
 
       player.update(dt, tDx, tDy, moving);
 
-      // AI bots（速度已在 Ball 里乘了 0.25）
       bots.forEach(bot => {
         if (!bot.alive) return;
         let target = null;
@@ -476,15 +484,15 @@
           const d = dist(bot, f);
           if (d < minD) { minD = d; target = f; }
         });
-        if (bot.mass > player.mass * 1.15 && dist(bot, player) < 400) {
+        if (bot.mass > player.mass * 1.15 && dist(bot, player) < 500) {
           target = player;
         }
         bots.forEach(other => {
-          if (other !== bot && other.alive && other.mass > bot.mass * 1.2 && dist(bot, other) < 250) {
+          if (other !== bot && other.alive && other.mass > bot.mass * 1.2 && dist(bot, other) < 300) {
             target = { x: bot.x - (other.x - bot.x), y: bot.y - (other.y - bot.y) };
           }
         });
-        if (player.mass > bot.mass * 1.2 && dist(bot, player) < 280) {
+        if (player.mass > bot.mass * 1.2 && dist(bot, player) < 350) {
           target = { x: bot.x - (player.x - bot.x), y: bot.y - (player.y - bot.y) };
         }
 
@@ -552,8 +560,11 @@
         }
       }
 
-      camera.x = player.x - canvas.width / 2;
-      camera.y = player.y - canvas.height / 2;
+      // 相机：跟随玩家 + 根据质量缩放
+      camera.scale = getCameraScale(player.mass);
+      camera.x = player.x;
+      camera.y = player.y;
+
       massDisplay.textContent = Math.floor(player.mass);
 
       if (player.mass >= CONFIG.winMass) {
@@ -568,34 +579,71 @@
       }
     }
 
+    function worldToScreen(wx, wy) {
+      const s = camera.scale;
+      return {
+        x: (wx - camera.x) * s + canvas.width / 2,
+        y: (wy - camera.y) * s + canvas.height / 2
+      };
+    }
+
     function draw() {
-      ctx.fillStyle = '#0d1b2a';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // 背景图（平铺或拉伸）
+      if (images.bg) {
+        // 以相机中心为基准平铺背景
+        const s = camera.scale;
+        const bgW = images.bg.width;
+        const bgH = images.bg.height;
+        // 简单拉伸覆盖整个画布（也可用平铺）
+        ctx.drawImage(images.bg, 0, 0, canvas.width, canvas.height);
+        // 半透明遮罩让游戏元素更清晰
+        ctx.fillStyle = 'rgba(10, 20, 35, 0.45)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      } else {
+        ctx.fillStyle = '#0d1b2a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
 
-      ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+      const s = camera.scale;
+
+      // 网格（随缩放）
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)';
       ctx.lineWidth = 1;
-      const grid = 80;
-      const startX = - (camera.x % grid);
-      const startY = - (camera.y % grid);
-      for (let x = startX; x < canvas.width; x += grid) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+      const grid = 100;
+      const viewW = canvas.width / s;
+      const viewH = canvas.height / s;
+      const startGX = Math.floor((camera.x - viewW / 2) / grid) * grid;
+      const startGY = Math.floor((camera.y - viewH / 2) / grid) * grid;
+      for (let x = startGX; x < camera.x + viewW / 2 + grid; x += grid) {
+        const p1 = worldToScreen(x, camera.y - viewH / 2);
+        const p2 = worldToScreen(x, camera.y + viewH / 2);
+        ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
       }
-      for (let y = startY; y < canvas.height; y += grid) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+      for (let y = startGY; y < camera.y + viewH / 2 + grid; y += grid) {
+        const p1 = worldToScreen(camera.x - viewW / 2, y);
+        const p2 = worldToScreen(camera.x + viewW / 2, y);
+        ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
       }
 
+      // 食物
       foods.forEach(f => {
-        const sx = f.x - camera.x;
-        const sy = f.y - camera.y;
-        if (sx < -20 || sx > canvas.width + 20 || sy < -20 || sy > canvas.height + 20) return;
+        const p = worldToScreen(f.x, f.y);
+        if (p.x < -20 || p.x > canvas.width + 20 || p.y < -20 || p.y > canvas.height + 20) return;
         ctx.beginPath();
-        ctx.arc(sx, sy, 5, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, 5 * s, 0, Math.PI * 2);
         ctx.fillStyle = f.color;
         ctx.fill();
       });
 
-      bots.forEach(b => b.draw(ctx, camera.x, camera.y));
-      if (player) player.draw(ctx, camera.x, camera.y);
+      // bots + player
+      bots.forEach(b => {
+        const p = worldToScreen(b.x, b.y);
+        b.draw(ctx, p.x, p.y, s);
+      });
+      if (player) {
+        const p = worldToScreen(player.x, player.y);
+        player.draw(ctx, p.x, p.y, s);
+      }
     }
 
     function loop(ts) {
@@ -659,7 +707,6 @@
       if (running) resize();
     });
 
-    // 初始化
     setupInput();
     initBgm();
     loadImages().then(() => {
