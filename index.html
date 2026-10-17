@@ -78,16 +78,17 @@
     }
     #joystick-zone {
       position: absolute;
-      left: 20px; bottom: 20px;
       width: 140px; height: 140px;
       z-index: 5;
       display: none;
+      pointer-events: none;
+      transform: translate(-50%, -50%);
     }
     #joystick-base {
       width: 140px; height: 140px;
       border-radius: 50%;
-      background: rgba(255,255,255,0.15);
-      border: 2px solid rgba(255,255,255,0.3);
+      background: rgba(255,255,255,0.18);
+      border: 2px solid rgba(255,255,255,0.35);
       position: relative;
     }
     #joystick-knob {
@@ -139,17 +140,16 @@
       <button class="overlay-btn" id="next-level-btn">返回主页</button>
     </div>
     <div id="lose-overlay">
-      <h2>被吃掉了…</h2>
+      <h2>被抓到了</h2>
       <button class="overlay-btn" id="retry-btn">再试一次</button>
       <button class="overlay-btn" id="menu-btn">返回主页</button>
     </div>
   </div>
 
   <script>
-    // ============== 配置 ==============
     const CONFIG = {
       winMass: 500,
-      foodCount: 160,
+      foodCount: 280,
       botCount: 30,
       worldSize: 6000,
       playerStartMass: 10,
@@ -171,7 +171,6 @@
       ]
     };
 
-    // ============== DOM ==============
     const menu = document.getElementById('menu');
     const gameContainer = document.getElementById('game-container');
     const canvas = document.getElementById('gameCanvas');
@@ -183,37 +182,27 @@
     const winOverlay = document.getElementById('win-overlay');
     const loseOverlay = document.getElementById('lose-overlay');
 
-    // ============== 状态 ==============
     let running = false;
     let player, foods, bots;
     let camera = { x: 0, y: 0, scale: 1 };
     let mouse = { x: 0, y: 0, down: false };
-    let joy = { active: false, dx: 0, dy: 0 };
+    let joy = { active: false, dx: 0, dy: 0, originX: 0, originY: 0 };
     let images = { puyi: null, eating: null, monsters: {}, bg: null };
     let bgmAudio = null;
     let lastTime = 0;
     let isMobile = false;
 
-    // ============== 工具函数 ==============
-    function massToRadius(m) {
-      return Math.sqrt(m) * 6;
-    }
-
+    function massToRadius(m) { return Math.sqrt(m) * 6; }
     function dist(a, b) {
       const dx = a.x - b.x, dy = a.y - b.y;
       return Math.sqrt(dx * dx + dy * dy);
     }
-
-    function clamp(v, min, max) {
-      return Math.max(min, Math.min(max, v));
-    }
-
+    function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
     function getCameraScale(mass) {
       const steps = Math.floor(mass / 50);
       return Math.max(0.35, 1 - steps * 0.09);
     }
 
-    // ============== 加载资源 ==============
     function loadImages() {
       const promises = [
         new Promise(res => {
@@ -251,48 +240,34 @@
       bgmAudio.loop = true;
       bgmAudio.volume = 0.45;
     }
-
     function playBgm() {
       if (!bgmAudio) initBgm();
       bgmAudio.currentTime = 0;
       bgmAudio.play().catch(() => {});
     }
-
     function stopBgm() {
-      if (bgmAudio) {
-        bgmAudio.pause();
-        bgmAudio.currentTime = 0;
-      }
+      if (bgmAudio) { bgmAudio.pause(); bgmAudio.currentTime = 0; }
     }
 
-    // ============== 球类 ==============
     class Ball {
       constructor(x, y, mass, isPlayer = false, monsterType = null) {
-        this.x = x;
-        this.y = y;
-        this.mass = mass;
-        this.vx = 0;
-        this.vy = 0;
+        this.x = x; this.y = y; this.mass = mass;
+        this.vx = 0; this.vy = 0;
         this.isPlayer = isPlayer;
         this.monsterType = monsterType;
-        this.eatTimer = 0;
-        this.alive = true;
+        this.eatTimer = 0; this.alive = true;
         this.speedMul = isPlayer ? CONFIG.playerSpeedMul : CONFIG.botSpeedMul;
       }
       get r() { return massToRadius(this.mass); }
 
       update(dt, targetDx, targetDy, isMoving) {
         if (!this.alive) return;
-
         const baseMax = CONFIG.maxSpeed * this.speedMul;
         const maxSpd = baseMax * (1 + Math.log10(this.mass + 1) * 0.15);
-
         if (isMoving) {
           const len = Math.sqrt(targetDx * targetDx + targetDy * targetDy) || 1;
-          const dirX = targetDx / len;
-          const dirY = targetDy / len;
-          this.vx += dirX * CONFIG.accel * this.speedMul * 60 * dt;
-          this.vy += dirY * CONFIG.accel * this.speedMul * 60 * dt;
+          this.vx += (targetDx / len) * CONFIG.accel * this.speedMul * 60 * dt;
+          this.vy += (targetDy / len) * CONFIG.accel * this.speedMul * 60 * dt;
           const spd = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
           if (spd > maxSpd) {
             this.vx = (this.vx / spd) * maxSpd;
@@ -300,45 +275,36 @@
           }
         } else {
           const friction = Math.pow(0.01, dt / CONFIG.frictionTime);
-          this.vx *= friction;
-          this.vy *= friction;
+          this.vx *= friction; this.vy *= friction;
           if (Math.abs(this.vx) < 0.01) this.vx = 0;
           if (Math.abs(this.vy) < 0.01) this.vy = 0;
         }
-
-        this.x += this.vx;
-        this.y += this.vy;
-
+        this.x += this.vx; this.y += this.vy;
         const r = this.r;
         this.x = clamp(this.x, r, CONFIG.worldSize - r);
         this.y = clamp(this.y, r, CONFIG.worldSize - r);
-
         if (this.eatTimer > 0) this.eatTimer -= dt * 1000;
       }
 
       draw(ctx, sx, sy, scale) {
         if (!this.alive) return;
         const r = this.r * scale;
-
         ctx.save();
         ctx.beginPath();
         ctx.arc(sx, sy, r, 0, Math.PI * 2);
         ctx.closePath();
         ctx.clip();
-
         if (this.isPlayer && images.puyi) {
           const img = (this.eatTimer > 0 && images.eating) ? images.eating : images.puyi;
           ctx.drawImage(img, sx - r, sy - r, r * 2, r * 2);
         } else if (this.monsterType && images.monsters[this.monsterType]) {
-          const img = images.monsters[this.monsterType];
-          ctx.drawImage(img, sx - r, sy - r, r * 2, r * 2);
+          ctx.drawImage(images.monsters[this.monsterType], sx - r, sy - r, r * 2, r * 2);
         } else {
           ctx.fillStyle = this.monsterType === 'large' ? '#e74c3c' :
                           this.monsterType === 'medium' ? '#f39c12' : '#2ecc71';
           ctx.fill();
         }
         ctx.restore();
-
         ctx.beginPath();
         ctx.arc(sx, sy, r, 0, Math.PI * 2);
         ctx.strokeStyle = 'rgba(0,0,0,0.35)';
@@ -347,12 +313,9 @@
       }
     }
 
-    // ============== 初始化关卡 ==============
     function initLevel(level) {
-      foods = [];
-      bots = [];
-      const cx = CONFIG.worldSize / 2;
-      const cy = CONFIG.worldSize / 2;
+      foods = []; bots = [];
+      const cx = CONFIG.worldSize / 2, cy = CONFIG.worldSize / 2;
       player = new Ball(cx, cy, CONFIG.playerStartMass, true);
 
       for (let i = 0; i < CONFIG.foodCount; i++) {
@@ -371,55 +334,44 @@
           by = Math.random() * CONFIG.worldSize;
           tries++;
         } while (dist({x:bx,y:by}, player) < 300 && tries < 60);
-
         const type = CONFIG.monsterTypes[i % 3];
         bots.push(new Ball(bx, by, type.mass, false, type.name));
       }
 
       camera.scale = 1;
-      camera.x = player.x;
-      camera.y = player.y;
+      camera.x = player.x; camera.y = player.y;
       winOverlay.style.display = 'none';
       loseOverlay.style.display = 'none';
       massDisplay.textContent = Math.floor(player.mass);
+      joystickZone.style.display = 'none';
     }
 
-    // ============== 输入 ==============
     function setupInput() {
       isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
                  ('ontouchstart' in window && window.innerWidth < 900);
 
       if (isMobile) {
-        joystickZone.style.display = 'block';
-        const base = document.getElementById('joystick-base');
-        const baseRect = () => base.getBoundingClientRect();
-
+        const maxR = 50;
         const handleStart = (e) => {
+          if (e.target === backBtn || backBtn.contains(e.target)) return;
           e.preventDefault();
+          const t = e.touches[0];
           joy.active = true;
-          const t = e.touches ? e.touches[0] : e;
-          updateJoy(t.clientX, t.clientY);
+          joy.originX = t.clientX;
+          joy.originY = t.clientY;
+          joy.dx = 0; joy.dy = 0;
+          joystickZone.style.display = 'block';
+          joystickZone.style.left = t.clientX + 'px';
+          joystickZone.style.top = t.clientY + 'px';
+          knob.style.left = '42px';
+          knob.style.top = '42px';
         };
         const handleMove = (e) => {
           if (!joy.active) return;
           e.preventDefault();
-          const t = e.touches ? e.touches[0] : e;
-          updateJoy(t.clientX, t.clientY);
-        };
-        const handleEnd = () => {
-          joy.active = false;
-          joy.dx = 0; joy.dy = 0;
-          knob.style.left = '42px';
-          knob.style.top = '42px';
-        };
-
-        function updateJoy(cx, cy) {
-          const rect = baseRect();
-          const centerX = rect.left + rect.width / 2;
-          const centerY = rect.top + rect.height / 2;
-          let dx = cx - centerX;
-          let dy = cy - centerY;
-          const maxR = 42;
+          const t = e.touches[0];
+          let dx = t.clientX - joy.originX;
+          let dy = t.clientY - joy.originY;
           const len = Math.sqrt(dx*dx + dy*dy);
           if (len > maxR) {
             dx = dx / len * maxR;
@@ -429,12 +381,16 @@
           joy.dy = dy / maxR;
           knob.style.left = (42 + dx) + 'px';
           knob.style.top = (42 + dy) + 'px';
-        }
-
-        joystickZone.addEventListener('touchstart', handleStart, {passive:false});
-        joystickZone.addEventListener('touchmove', handleMove, {passive:false});
-        joystickZone.addEventListener('touchend', handleEnd);
-        joystickZone.addEventListener('touchcancel', handleEnd);
+        };
+        const handleEnd = () => {
+          joy.active = false;
+          joy.dx = 0; joy.dy = 0;
+          joystickZone.style.display = 'none';
+        };
+        canvas.addEventListener('touchstart', handleStart, {passive:false});
+        canvas.addEventListener('touchmove', handleMove, {passive:false});
+        canvas.addEventListener('touchend', handleEnd);
+        canvas.addEventListener('touchcancel', handleEnd);
       } else {
         canvas.addEventListener('mousemove', e => {
           const rect = canvas.getBoundingClientRect();
@@ -451,23 +407,17 @@
       }
     }
 
-    // ============== 游戏循环 ==============
     function update(dt) {
       if (!running || !player.alive) return;
 
       let tDx = 0, tDy = 0, moving = false;
-
       if (isMobile) {
         if (joy.active && (Math.abs(joy.dx) > 0.05 || Math.abs(joy.dy) > 0.05)) {
-          tDx = joy.dx;
-          tDy = joy.dy;
-          moving = true;
+          tDx = joy.dx; tDy = joy.dy; moving = true;
         }
       } else {
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
-        tDx = mouse.x - cx;
-        tDy = mouse.y - cy;
+        tDx = mouse.x - canvas.width / 2;
+        tDy = mouse.y - canvas.height / 2;
         moving = mouse.down;
       }
 
@@ -476,32 +426,17 @@
       bots.forEach(bot => {
         if (!bot.alive) return;
         let target = null;
-        let minD = Infinity;
-        foods.forEach(f => {
-          const d = dist(bot, f);
-          if (d < minD) { minD = d; target = f; }
-        });
-        if (bot.mass > player.mass * 1.15 && dist(bot, player) < 500) {
+        if (bot.mass > player.mass * 1.15 && dist(bot, player) < 600) {
           target = player;
-        }
-        bots.forEach(other => {
-          if (other !== bot && other.alive && other.mass > bot.mass * 1.2 && dist(bot, other) < 300) {
-            target = { x: bot.x - (other.x - bot.x), y: bot.y - (other.y - bot.y) };
-          }
-        });
-        if (player.mass > bot.mass * 1.2 && dist(bot, player) < 350) {
+        } else if (player.mass > bot.mass * 1.2 && dist(bot, player) < 400) {
           target = { x: bot.x - (player.x - bot.x), y: bot.y - (player.y - bot.y) };
-        }
-
-        let dx = 0, dy = 0;
-        if (target) {
-          dx = target.x - bot.x;
-          dy = target.y - bot.y;
         } else {
-          dx = Math.sin(Date.now() / 800 + bot.x) * 50;
-          dy = Math.cos(Date.now() / 900 + bot.y) * 50;
+          target = {
+            x: bot.x + Math.sin(Date.now() / 900 + bot.x * 0.01) * 80,
+            y: bot.y + Math.cos(Date.now() / 1000 + bot.y * 0.01) * 80
+          };
         }
-        bot.update(dt, dx, dy, true);
+        bot.update(dt, target.x - bot.x, target.y - bot.y, true);
       });
 
       for (let i = foods.length - 1; i >= 0; i--) {
@@ -518,57 +453,32 @@
           });
         }
       }
-      bots.forEach(bot => {
-        if (!bot.alive) return;
-        for (let i = foods.length - 1; i >= 0; i--) {
-          const f = foods[i];
-          if (dist(bot, f) < bot.r - 2) {
-            bot.mass += f.mass;
-            foods.splice(i, 1);
-            foods.push({
-              x: Math.random() * CONFIG.worldSize,
-              y: Math.random() * CONFIG.worldSize,
-              mass: CONFIG.foodMass,
-              color: `hsl(${Math.random()*360}, 80%, 60%)`
-            });
-          }
-        }
-      });
 
-      const all = [player, ...bots];
-      for (let i = 0; i < all.length; i++) {
-        for (let j = i + 1; j < all.length; j++) {
-          const a = all[i], b = all[j];
-          if (!a.alive || !b.alive) continue;
-          const d = dist(a, b);
-          if (d < Math.max(a.r, b.r) * 0.85) {
-            if (a.mass > b.mass * 1.12) {
-              a.mass += b.mass * 0.9;
-              b.alive = false;
-              if (a.isPlayer) a.eatTimer = CONFIG.eatAnimDuration;
-            } else if (b.mass > a.mass * 1.12) {
-              b.mass += a.mass * 0.9;
-              a.alive = false;
-              if (b.isPlayer) b.eatTimer = CONFIG.eatAnimDuration;
-            }
+      for (let i = 0; i < bots.length; i++) {
+        const bot = bots[i];
+        if (!bot.alive || !player.alive) continue;
+        const d = dist(player, bot);
+        if (d < Math.max(player.r, bot.r) * 0.85) {
+          if (player.mass > bot.mass * 1.12) {
+            player.mass += bot.mass * 0.9;
+            bot.alive = false;
+            player.eatTimer = CONFIG.eatAnimDuration;
+          } else if (bot.mass > player.mass * 1.12) {
+            player.alive = false;
           }
         }
       }
 
       camera.scale = getCameraScale(player.mass);
-      camera.x = player.x;
-      camera.y = player.y;
-
+      camera.x = player.x; camera.y = player.y;
       massDisplay.textContent = Math.floor(player.mass);
 
       if (player.mass >= CONFIG.winMass) {
-        running = false;
-        stopBgm();
+        running = false; stopBgm();
         winOverlay.style.display = 'flex';
       }
       if (!player.alive) {
-        running = false;
-        stopBgm();
+        running = false; stopBgm();
         loseOverlay.style.display = 'flex';
       }
     }
@@ -581,23 +491,37 @@
       };
     }
 
-    function draw() {
-      if (images.bg) {
-        ctx.drawImage(images.bg, 0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = 'rgba(10, 20, 35, 0.45)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      } else {
+    function drawBackground() {
+      if (!images.bg) {
         ctx.fillStyle = '#0d1b2a';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
+        return;
       }
+      const img = images.bg;
+      const cw = canvas.width, ch = canvas.height;
+      const ir = img.width / img.height;
+      const cr = cw / ch;
+      let dw, dh, dx, dy;
+      if (cr > ir) {
+        dw = cw; dh = cw / ir;
+        dx = 0; dy = (ch - dh) / 2;
+      } else {
+        dh = ch; dw = ch * ir;
+        dx = (cw - dw) / 2; dy = 0;
+      }
+      ctx.drawImage(img, dx, dy, dw, dh);
+      ctx.fillStyle = 'rgba(10, 20, 35, 0.4)';
+      ctx.fillRect(0, 0, cw, ch);
+    }
 
+    function draw() {
+      drawBackground();
       const s = camera.scale;
 
       ctx.strokeStyle = 'rgba(255,255,255,0.06)';
       ctx.lineWidth = 1;
       const grid = 100;
-      const viewW = canvas.width / s;
-      const viewH = canvas.height / s;
+      const viewW = canvas.width / s, viewH = canvas.height / s;
       const startGX = Math.floor((camera.x - viewW / 2) / grid) * grid;
       const startGY = Math.floor((camera.y - viewH / 2) / grid) * grid;
       for (let x = startGX; x < camera.x + viewW / 2 + grid; x += grid) {
@@ -657,6 +581,7 @@
       menu.style.display = 'flex';
       winOverlay.style.display = 'none';
       loseOverlay.style.display = 'none';
+      joystickZone.style.display = 'none';
     }
 
     function resize() {
@@ -667,8 +592,7 @@
     document.querySelectorAll('.level-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         if (btn.classList.contains('disabled')) return;
-        const lv = btn.dataset.level;
-        if (lv === '1') startGame(1);
+        if (btn.dataset.level === '1') startGame(1);
       });
     });
 
@@ -684,16 +608,11 @@
       requestAnimationFrame(loop);
     });
     document.getElementById('menu-btn').addEventListener('click', backToMenu);
-
-    window.addEventListener('resize', () => {
-      if (running) resize();
-    });
+    window.addEventListener('resize', () => { if (running) resize(); });
 
     setupInput();
     initBgm();
-    loadImages().then(() => {
-      console.log('噗伊大作战 资源加载完成');
-    });
+    loadImages().then(() => console.log('噗伊大作战 资源加载完成'));
   </script>
 </body>
 </html>
