@@ -2,10 +2,32 @@
 
 类似《球球大作战》的网页小游戏。主角「噗伊」越吃越大，达到目标质量即可通关。
 
+## 🌐 云端网站游玩（推荐）
+
+用 **GitHub Pages** 免费托管，电脑和手机都能直接打开玩。
+
+### 只需 30 秒开启：
+
+1. 打开仓库：https://github.com/pyun3708-cyber/puyi
+2. 点击上方 **Settings**（设置）
+3. 左侧找到 **Pages**
+4. 在 **Source** 里选择：
+   - Branch: `main`
+   - Folder: `/ (root)`
+5. 点击 **Save**
+
+大约 1～2 分钟后，网站就会上线：
+
+**👉 游戏地址：https://pyun3708-cyber.github.io/puyi/**
+
+以后只要你更新代码，网站也会自动更新。
+
+---
+
 ## 如何游玩
 
-1. 打开仓库后点击 **index.html** 预览，或启用 GitHub Pages 后访问。
-2. 也可以本地双击 `index.html` 直接运行（需能加载 `photo/` 目录下的图片）。
+1. 打开上面的云端地址即可直接玩
+2. 也可以本地双击 `index.html` 运行（需能加载 `photo/` 目录下的图片）
 
 ### 操作说明
 
@@ -27,4 +49,4 @@
 
 ## 技术说明
 
-纯 HTML5 Canvas + 原生 JS，无第三方依赖，电脑与手机均可游玩。
+纯 HTML5 Canvas + 原生 JS，无第三方依赖，电脑与手机均可游玩。已添加 `.nojekyll` 方便 GitHub Pages 直接托管。
