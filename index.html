@@ -200,7 +200,13 @@
     function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
     function getCameraScale(mass) {
       const steps = Math.floor(mass / 50);
-      return Math.max(0.35, 1 - steps * 0.09);
+      // 手机视野更大：基础缩放更小，能看到更多地图
+      let s = Math.max(0.28, 1 - steps * 0.09);
+      if (isMobile) {
+        s *= 0.58; // 手机再拉远约 42%
+        s = Math.max(0.22, s);
+      }
+      return s;
     }
 
     function loadImages() {
@@ -338,7 +344,7 @@
         bots.push(new Ball(bx, by, type.mass, false, type.name));
       }
 
-      camera.scale = 1;
+      camera.scale = getCameraScale(CONFIG.playerStartMass);
       camera.x = player.x; camera.y = player.y;
       winOverlay.style.display = 'none';
       loseOverlay.style.display = 'none';
